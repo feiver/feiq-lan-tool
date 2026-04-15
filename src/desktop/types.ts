@@ -28,6 +28,7 @@ export type MessagePayload = {
 
 export type ChatMessage = {
   message_id: string;
+  from_device_id: string;
   to_device_id: string;
   content: string;
   sent_at_ms: number;

@@ -113,7 +113,8 @@ test("loads existing session messages from desktop api", async () => {
   mockedListMessages.mockResolvedValue([
     {
       message_id: "msg-history-1",
-      to_device_id: "device-a",
+      from_device_id: "device-a",
+      to_device_id: "local-device",
       content: "历史消息",
       sent_at_ms: 1001,
       kind: "direct",
@@ -124,6 +125,53 @@ test("loads existing session messages from desktop api", async () => {
 
   await waitFor(() => {
     expect(screen.getByText("历史消息")).toBeInTheDocument();
+  });
+});
+
+test("shows incoming message only in the sender session", async () => {
+  const user = userEvent.setup();
+
+  mockedListDevices.mockResolvedValue([
+    {
+      device_id: "device-a",
+      nickname: "Alice",
+      host_name: "alice-pc",
+      ip_addr: "192.168.1.10",
+      message_port: 37001,
+      file_port: 37002,
+      last_seen_ms: 1000,
+    },
+    {
+      device_id: "device-b",
+      nickname: "Bob",
+      host_name: "bob-mac",
+      ip_addr: "192.168.1.11",
+      message_port: 37003,
+      file_port: 37004,
+      last_seen_ms: 1001,
+    },
+  ]);
+  mockedListMessages.mockResolvedValue([
+    {
+      message_id: "msg-incoming-1",
+      from_device_id: "device-a",
+      to_device_id: "local-device",
+      content: "Alice ping",
+      sent_at_ms: 1002,
+      kind: "direct",
+    },
+  ]);
+
+  render(<App />);
+
+  await waitFor(() => {
+    expect(screen.getByText("Alice ping")).toBeInTheDocument();
+  });
+
+  await user.click(screen.getByRole("button", { name: /Bob/ }));
+
+  await waitFor(() => {
+    expect(screen.queryByText("Alice ping")).not.toBeInTheDocument();
   });
 });
 

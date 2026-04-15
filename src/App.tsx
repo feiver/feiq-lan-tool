@@ -56,6 +56,7 @@ function App() {
     );
     addMessage({
       message_id: `local-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      from_device_id: settings.deviceId,
       to_device_id: activeDevice.device_id,
       content,
       sent_at_ms: Date.now(),
@@ -80,6 +81,7 @@ function App() {
     );
     addMessage({
       message_id: `local-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      from_device_id: settings.deviceId,
       to_device_id: "*",
       content,
       sent_at_ms: Date.now(),
@@ -88,11 +90,24 @@ function App() {
     setDraftMessage("");
   }
 
-  const visibleMessages = messages.filter(
-    (message) =>
-      message.kind === "broadcast" ||
-      (activeDevice ? message.to_device_id === activeDevice.device_id : false),
-  );
+  const visibleMessages = messages.filter((message) => {
+    if (message.kind === "broadcast") {
+      return true;
+    }
+
+    if (!activeDevice) {
+      return false;
+    }
+
+    const isOutgoingToActive =
+      message.from_device_id === settings.deviceId &&
+      message.to_device_id === activeDevice.device_id;
+    const isIncomingFromActive =
+      message.from_device_id === activeDevice.device_id &&
+      message.to_device_id === settings.deviceId;
+
+    return isOutgoingToActive || isIncomingFromActive;
+  });
 
   return (
     <main className="app-shell">

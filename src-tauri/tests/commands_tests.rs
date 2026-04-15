@@ -39,6 +39,7 @@ fn state_helpers_return_devices_and_transfers() {
         });
     state.push_message(ChatMessage {
         message_id: "msg-1".into(),
+        from_device_id: "device-b".into(),
         to_device_id: "device-a".into(),
         content: "hello".into(),
         sent_at_ms: 1002,

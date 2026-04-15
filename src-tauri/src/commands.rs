@@ -27,6 +27,7 @@ pub async fn send_direct_message(
 ) -> Result<(), String> {
     let history_message = ChatMessage {
         message_id: payload.message_id.clone(),
+        from_device_id: payload.from_device_id.clone(),
         to_device_id: payload.to_device_id.clone(),
         content: payload.content.clone(),
         sent_at_ms: payload.sent_at_ms,
@@ -47,6 +48,7 @@ pub async fn send_broadcast_message(
 ) -> Result<(), String> {
     let history_message = ChatMessage {
         message_id: payload.message_id.clone(),
+        from_device_id: payload.from_device_id.clone(),
         to_device_id: payload.to_device_id.clone(),
         content: payload.content.clone(),
         sent_at_ms: payload.sent_at_ms,
