@@ -31,6 +31,34 @@ pub struct MessagePayload {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TransferStatus {
+    Pending,
+    InProgress,
+    Completed,
+    Failed,
+    Cancelled,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TransferTask {
+    pub transfer_id: String,
+    pub file_name: String,
+    pub file_size: u64,
+    pub from_device_id: String,
+    pub to_device_id: String,
+    pub status: TransferStatus,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FileOffer {
+    pub transfer_id: String,
+    pub file_name: String,
+    pub file_size: u64,
+    pub from_device_id: String,
+    pub to_device_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "payload")]
 pub enum LanEvent {
     DeviceAnnouncement(DeviceAnnouncement),

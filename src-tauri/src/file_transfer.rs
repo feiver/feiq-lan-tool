@@ -1,0 +1,29 @@
+use std::fs::File;
+use std::io::{self, Read, Write};
+use std::net::TcpStream;
+use std::path::Path;
+
+use crate::models::{TransferStatus, TransferTask};
+
+pub async fn send_file(addr: &str, file_path: &Path) -> io::Result<u64> {
+    let mut file = File::open(file_path)?;
+    let mut stream = TcpStream::connect(addr)?;
+    let mut buffer = [0_u8; 8192];
+    let mut sent = 0_u64;
+
+    loop {
+        let bytes_read = file.read(&mut buffer)?;
+        if bytes_read == 0 {
+            break;
+        }
+
+        stream.write_all(&buffer[..bytes_read])?;
+        sent += bytes_read as u64;
+    }
+
+    Ok(sent)
+}
+
+pub fn mark_transfer_status(task: &mut TransferTask, status: TransferStatus) {
+    task.status = status;
+}
