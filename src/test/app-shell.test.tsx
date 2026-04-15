@@ -33,6 +33,11 @@ beforeEach(() => {
     messages: [],
     transfers: [],
     selectedDeviceId: null,
+    settings: {
+      deviceId: "local-device",
+      nickname: "未命名设备",
+      downloadDir: "~/Downloads",
+    },
   });
   mockedListDevices.mockReset();
   mockedListMessages.mockReset();
@@ -281,4 +286,16 @@ test("shows sent direct messages in the active session", async () => {
   });
 
   expect(input).toHaveValue("");
+});
+
+test("updates local nickname in shared settings state", async () => {
+  const user = userEvent.setup();
+
+  render(<App />);
+
+  const nicknameInput = screen.getByDisplayValue("未命名设备");
+  await user.clear(nicknameInput);
+  await user.type(nicknameInput, "局域网助手");
+
+  expect(useAppStore.getState().settings.nickname).toBe("局域网助手");
 });

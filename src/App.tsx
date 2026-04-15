@@ -16,10 +16,12 @@ function App() {
   const devices = useAppStore((state) => state.devices);
   const messages = useAppStore((state) => state.messages);
   const selectedDeviceId = useAppStore((state) => state.selectedDeviceId);
+  const settings = useAppStore((state) => state.settings);
   const transfers = useAppStore((state) => state.transfers);
   const load = useAppStore((state) => state.load);
   const selectDevice = useAppStore((state) => state.selectDevice);
   const addMessage = useAppStore((state) => state.addMessage);
+  const updateSettings = useAppStore((state) => state.updateSettings);
   const activeDevice =
     devices.find((device) => device.device_id === selectedDeviceId) ?? null;
   const [draftMessage, setDraftMessage] = useState("");
@@ -31,7 +33,7 @@ function App() {
   function createPayload(toDeviceId: string, content: string): MessagePayload {
     return {
       message_id: `msg-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      from_device_id: "local-device",
+      from_device_id: settings.deviceId,
       to_device_id: toDeviceId,
       content,
       sent_at_ms: Date.now(),
@@ -111,7 +113,12 @@ function App() {
       />
       <div className="right-column">
         <TransfersPanel transfers={transfers} />
-        <SettingsPanel />
+        <SettingsPanel
+          nickname={settings.nickname}
+          downloadDir={settings.downloadDir}
+          onNicknameChange={(value) => updateSettings({ nickname: value })}
+          onDownloadDirChange={(value) => updateSettings({ downloadDir: value })}
+        />
       </div>
     </main>
   );
