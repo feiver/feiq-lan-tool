@@ -38,6 +38,7 @@ fn main() {
             commands::get_settings,
             commands::sync_settings,
             commands::send_file_to_device,
+            commands::classify_delivery_paths,
             commands::send_delivery_request,
             commands::send_delivery_response,
             commands::send_direct_message,

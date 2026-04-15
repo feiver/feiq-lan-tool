@@ -91,6 +91,10 @@ export async function pickSaveDirectory(): Promise<string | null> {
   return typeof selected === "string" ? selected : null;
 }
 
+export function classifyDeliveryPaths(paths: string[]): Promise<PendingDeliveryEntry[]> {
+  return invoke("classify_delivery_paths", { paths });
+}
+
 export function openDirectory(path: string): Promise<void> {
   return openPath(path);
 }

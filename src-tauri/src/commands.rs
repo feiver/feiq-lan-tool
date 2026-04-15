@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, State};
 
 use feiq_lan_tool_lib::app_state::{AppState, OutgoingDeliveryFile, OutgoingDeliverySession};
@@ -28,7 +28,7 @@ use feiq_lan_tool_lib::settings_store::save_settings;
 
 const TRANSFER_UPDATED_EVENT: &str = "transfer-updated";
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct DeliverySourcePayload {
     source_path: String,
     display_name: String,
@@ -281,6 +281,35 @@ pub async fn send_delivery_response(
             save_root,
         )
         .ok_or_else(|| "delivery request not found".to_string())
+}
+
+#[tauri::command]
+pub async fn classify_delivery_paths(
+    paths: Vec<String>,
+) -> Result<Vec<DeliverySourcePayload>, String> {
+    paths.into_iter()
+        .map(|path| {
+            let metadata = fs::metadata(&path).map_err(|err| err.to_string())?;
+            let display_name = Path::new(&path)
+                .file_name()
+                .and_then(|name| name.to_str())
+                .map(ToOwned::to_owned)
+                .ok_or_else(|| "invalid delivery path".to_string())?;
+
+            Ok(DeliverySourcePayload {
+                source_path: path,
+                relative_path: display_name.clone(),
+                group_name: metadata.is_dir().then_some(display_name.clone()),
+                display_name,
+                kind: if metadata.is_dir() {
+                    "directory".into()
+                } else {
+                    "file".into()
+                },
+                file_size: if metadata.is_dir() { 0 } else { metadata.len() },
+            })
+        })
+        .collect()
 }
 
 fn parse_delivery_decision(decision: &str) -> Result<DeliveryDecision, String> {

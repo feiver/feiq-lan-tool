@@ -4,6 +4,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 
 import { useAppStore } from "./app/store";
 import {
+  classifyDeliveryPaths,
   openDirectory,
   pickDeliveryDirectory,
   pickDeliveryFiles,
@@ -16,7 +17,6 @@ import {
 } from "./desktop/api";
 import { ChatPanel } from "./desktop/modules/chat/ChatPanel";
 import {
-  createPendingEntriesFromDroppedPaths,
   createPendingFileEntries,
   createPendingDirectoryEntry,
   mergePendingDeliveryEntries,
@@ -147,12 +147,11 @@ function App() {
 
         setIsDeliveryDragActive(false);
         if (payload.type === "drop") {
-          setPendingDeliveries((current) =>
-            mergePendingDeliveryEntries(
-              current,
-              createPendingEntriesFromDroppedPaths(payload.paths),
-            ),
-          );
+          void classifyDeliveryPaths(payload.paths).then((entries) => {
+            setPendingDeliveries((current) =>
+              mergePendingDeliveryEntries(current, entries),
+            );
+          });
         }
       })
       .then((cleanup) => {
