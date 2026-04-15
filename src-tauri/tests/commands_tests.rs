@@ -12,21 +12,17 @@ fn state_helpers_return_empty_lists_by_default() {
 #[test]
 fn state_helpers_return_devices_and_transfers() {
     let state = AppState::default();
-    state
-        .registry
-        .write()
-        .expect("registry write lock")
-        .upsert(
-            DeviceAnnouncement {
-                device_id: "device-a".into(),
-                nickname: "Alice".into(),
-                host_name: "alice-pc".into(),
-                ip_addr: "192.168.1.10".into(),
-                message_port: 37001,
-                file_port: 37002,
-            },
-            1000,
-        );
+    state.registry.write().expect("registry write lock").upsert(
+        DeviceAnnouncement {
+            device_id: "device-a".into(),
+            nickname: "Alice".into(),
+            host_name: "alice-pc".into(),
+            ip_addr: "192.168.1.10".into(),
+            message_port: 37001,
+            file_port: 37002,
+        },
+        1000,
+    );
     state
         .transfers
         .write()

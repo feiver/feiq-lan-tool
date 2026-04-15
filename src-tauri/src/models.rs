@@ -63,4 +63,5 @@ pub struct FileOffer {
 pub enum LanEvent {
     DeviceAnnouncement(DeviceAnnouncement),
     DirectMessage(MessagePayload),
+    BroadcastMessage(MessagePayload),
 }

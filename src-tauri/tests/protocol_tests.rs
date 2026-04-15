@@ -33,3 +33,19 @@ fn protocol_roundtrip_for_message_payload() {
 
     assert_eq!(decoded, event);
 }
+
+#[test]
+fn protocol_roundtrip_for_broadcast_message() {
+    let event = LanEvent::BroadcastMessage(MessagePayload {
+        message_id: "msg-broadcast".into(),
+        from_device_id: "device-a".into(),
+        to_device_id: "*".into(),
+        content: "hello everyone".into(),
+        sent_at_ms: 1_712_000_100,
+    });
+
+    let bytes = encode_event(&event).expect("encode");
+    let decoded = decode_event(&bytes).expect("decode");
+
+    assert_eq!(decoded, event);
+}

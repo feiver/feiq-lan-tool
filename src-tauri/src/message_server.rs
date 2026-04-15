@@ -16,9 +16,17 @@ pub struct MessageEnvelope {
 }
 
 pub async fn send_message(addr: &str, payload: MessagePayload) -> io::Result<()> {
+    send_event(addr, LanEvent::DirectMessage(payload)).await
+}
+
+pub async fn send_broadcast(addr: &str, payload: MessagePayload) -> io::Result<()> {
+    send_event(addr, LanEvent::BroadcastMessage(payload)).await
+}
+
+async fn send_event(addr: &str, event: LanEvent) -> io::Result<()> {
     let mut stream = TcpStream::connect(addr)?;
-    let bytes = encode_event(&LanEvent::DirectMessage(payload))
-        .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
+    let bytes =
+        encode_event(&event).map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
     stream.write_all(&bytes)?;
     Ok(())
 }

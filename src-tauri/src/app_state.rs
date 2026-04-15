@@ -18,9 +18,6 @@ impl AppState {
     }
 
     pub fn list_transfers(&self) -> Vec<TransferTask> {
-        self.transfers
-            .read()
-            .expect("transfers read lock")
-            .clone()
+        self.transfers.read().expect("transfers read lock").clone()
     }
 }
