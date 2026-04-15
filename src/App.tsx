@@ -215,6 +215,7 @@ function App() {
       <ChatPanel
         activeDeviceName={activeDevice?.nickname ?? null}
         messages={visibleMessages}
+        localDeviceId={settings.deviceId}
         draftMessage={draftMessage}
         filePath={draftFilePath}
         onDraftChange={setDraftMessage}

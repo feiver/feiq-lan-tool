@@ -178,6 +178,27 @@ test("loads existing session messages from desktop api", async () => {
   });
 });
 
+test("shows actionable empty state for the active session", async () => {
+  mockedListDevices.mockResolvedValue([
+    {
+      device_id: "device-a",
+      nickname: "Alice",
+      host_name: "alice-pc",
+      ip_addr: "192.168.1.10",
+      message_port: 37001,
+      file_port: 37002,
+      last_seen_ms: 1000,
+    },
+  ]);
+
+  render(<App />);
+
+  await waitFor(() => {
+    expect(screen.getByText("当前会话：Alice")).toBeInTheDocument();
+    expect(screen.getByText("已连接 Alice，可发送单聊消息或文件。")).toBeInTheDocument();
+  });
+});
+
 test("shows incoming message only in the sender session", async () => {
   const user = userEvent.setup();
 
@@ -222,6 +243,47 @@ test("shows incoming message only in the sender session", async () => {
 
   await waitFor(() => {
     expect(screen.queryByText("Alice ping")).not.toBeInTheDocument();
+  });
+});
+
+test("shows localized message tags for direct and broadcast messages", async () => {
+  mockedListDevices.mockResolvedValue([
+    {
+      device_id: "device-a",
+      nickname: "Alice",
+      host_name: "alice-pc",
+      ip_addr: "192.168.1.10",
+      message_port: 37001,
+      file_port: 37002,
+      last_seen_ms: 1000,
+    },
+  ]);
+  mockedListMessages.mockResolvedValue([
+    {
+      message_id: "msg-direct-1",
+      from_device_id: "device-a",
+      to_device_id: "local-device",
+      content: "hi there",
+      sent_at_ms: 1002,
+      kind: "direct",
+    },
+    {
+      message_id: "msg-broadcast-1",
+      from_device_id: "local-device",
+      to_device_id: "*",
+      content: "team update",
+      sent_at_ms: 1003,
+      kind: "broadcast",
+    },
+  ]);
+
+  render(<App />);
+
+  await waitFor(() => {
+    expect(screen.getByText("Alice · 单聊")).toBeInTheDocument();
+    expect(screen.getByText("我 · 广播")).toBeInTheDocument();
+    expect(screen.getByText("hi there")).toBeInTheDocument();
+    expect(screen.getByText("team update")).toBeInTheDocument();
   });
 });
 

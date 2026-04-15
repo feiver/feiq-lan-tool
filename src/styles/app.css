@@ -164,12 +164,28 @@ body {
 }
 
 .chat-bubble {
+  display: grid;
+  gap: 6px;
   width: fit-content;
   max-width: 85%;
   padding: 12px 14px;
   border-radius: 16px 16px 4px 16px;
   background: linear-gradient(135deg, #dbeafe, #bfdbfe);
   color: #0f172a;
+}
+
+.chat-bubble.is-outgoing {
+  margin-left: auto;
+  border-radius: 16px 16px 16px 4px;
+  background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+  color: #eff6ff;
+}
+
+.chat-bubble-meta {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  opacity: 0.78;
 }
 
 .chat-actions {

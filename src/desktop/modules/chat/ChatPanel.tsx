@@ -3,6 +3,7 @@ import type { ChatMessage } from "../../types";
 type ChatPanelProps = {
   activeDeviceName: string | null;
   messages: ChatMessage[];
+  localDeviceId: string;
   draftMessage: string;
   filePath: string;
   onDraftChange: (value: string) => void;
@@ -18,6 +19,7 @@ type ChatPanelProps = {
 export function ChatPanel({
   activeDeviceName,
   messages,
+  localDeviceId,
   draftMessage,
   filePath,
   onDraftChange,
@@ -29,34 +31,56 @@ export function ChatPanel({
   canSendBroadcast,
   canSendFile,
 }: ChatPanelProps) {
+  function formatEmptyState(): string {
+    if (activeDeviceName) {
+      return `已连接 ${activeDeviceName}，可发送单聊消息或文件。`;
+    }
+
+    return "请选择在线联系人开始单聊，也可以直接发送广播消息。";
+  }
+
+  function formatMessageMeta(message: ChatMessage): string {
+    const senderName =
+      message.from_device_id === localDeviceId
+        ? "我"
+        : activeDeviceName ?? message.from_device_id;
+    const kindLabel = message.kind === "broadcast" ? "广播" : "单聊";
+    return `${senderName} · ${kindLabel}`;
+  }
+
   return (
     <section className="panel panel-chat">
       <div className="panel-header">
         <p className="panel-kicker">Session</p>
         <h2>消息会话</h2>
       </div>
-      <div className="chat-placeholder">
-        {activeDeviceName ? (
-          <>
-            <p>{`当前会话：${activeDeviceName}`}</p>
-            <p>会话消息流将在下一步接入，当前已支持联系人切换联动。</p>
-          </>
-        ) : (
-          <>
-            <p>请选择一个在线联系人开始会话。</p>
-            <p>消息流、单聊输入和广播动作会在下一步接入。</p>
-          </>
-        )}
-      </div>
       {messages.length > 0 ? (
         <div className="chat-log">
           {messages.map((message) => (
-            <div key={message.message_id} className="chat-bubble">
-              {message.content}
+            <div
+              key={message.message_id}
+              className={`chat-bubble${message.from_device_id === localDeviceId ? " is-outgoing" : ""}`}
+            >
+              <span className="chat-bubble-meta">{formatMessageMeta(message)}</span>
+              <span>{message.content}</span>
             </div>
           ))}
         </div>
-      ) : null}
+      ) : (
+        <div className="chat-placeholder">
+          {activeDeviceName ? (
+            <>
+              <p>{`当前会话：${activeDeviceName}`}</p>
+              <p>{formatEmptyState()}</p>
+            </>
+          ) : (
+            <>
+              <p>暂无活动会话</p>
+              <p>{formatEmptyState()}</p>
+            </>
+          )}
+        </div>
+      )}
       <textarea
         className="chat-input"
         placeholder="输入消息内容"
