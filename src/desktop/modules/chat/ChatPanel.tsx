@@ -1,4 +1,5 @@
 import type { ChatMessage } from "../../types";
+import { FileDeliveryCard } from "./FileDeliveryCard";
 import {
   summarizeDeliverySelection,
   type PendingDeliveryEntry,
@@ -17,6 +18,9 @@ type ChatPanelProps = {
   onSendDirect: () => void;
   onSendBroadcast: () => void;
   onSendDelivery: () => void;
+  onAcceptDelivery: (requestId: string) => void;
+  onRejectDelivery: (requestId: string) => void;
+  onOpenDeliveryDirectory: (path: string) => void;
   canSendDirect: boolean;
   canSendBroadcast: boolean;
   canSendDelivery: boolean;
@@ -35,6 +39,9 @@ export function ChatPanel({
   onSendDirect,
   onSendBroadcast,
   onSendDelivery,
+  onAcceptDelivery,
+  onRejectDelivery,
+  onOpenDeliveryDirectory,
   canSendDirect,
   canSendBroadcast,
   canSendDelivery,
@@ -77,7 +84,17 @@ export function ChatPanel({
               className={`chat-bubble${message.from_device_id === localDeviceId ? " is-outgoing" : ""}`}
             >
               <span className="chat-bubble-meta">{formatMessageMeta(message)}</span>
-              <span>{message.content}</span>
+              {message.kind === "delivery" && message.delivery ? (
+                <FileDeliveryCard
+                  message={message}
+                  isIncoming={message.from_device_id !== localDeviceId}
+                  onAccept={onAcceptDelivery}
+                  onReject={onRejectDelivery}
+                  onOpenDirectory={onOpenDeliveryDirectory}
+                />
+              ) : (
+                <span>{message.content}</span>
+              )}
             </div>
           ))}
         </div>

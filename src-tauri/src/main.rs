@@ -17,6 +17,7 @@ use runtime::{
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .manage(AppState::default())
         .setup(|app| {
@@ -37,6 +38,8 @@ fn main() {
             commands::get_settings,
             commands::sync_settings,
             commands::send_file_to_device,
+            commands::send_delivery_request,
+            commands::send_delivery_response,
             commands::send_direct_message,
             commands::send_broadcast_message
         ])

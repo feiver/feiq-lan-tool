@@ -269,7 +269,7 @@ npm.cmd run test -- delivery-selection app-shell
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```powershell
 git add package.json src/desktop/api.ts src/App.tsx src/desktop/modules/chat/ChatPanel.tsx src/desktop/modules/chat/delivery.ts src/styles/app.css src/test/delivery-selection.test.ts src/test/app-shell.test.tsx
@@ -292,7 +292,7 @@ git commit -m "feat: 接入文件投递发送端选择流"
 - Modify: `D:\我的工作空间\feiq-lan-tool\src\test\app-shell.test.tsx`
 - Modify: `D:\我的工作空间\feiq-lan-tool\README.md`
 
-- [ ] **Step 1: Write the failing runtime and UI tests**
+- [x] **Step 1: Write the failing runtime and UI tests**
 
 Add to `src-tauri/tests/message_runtime_tests.rs`:
 
@@ -339,7 +339,7 @@ test("shows accept and cancel on incoming delivery cards", async () => {
 });
 ```
 
-- [ ] **Step 2: Run the tests to verify RED**
+- [x] **Step 2: Run the tests to verify RED**
 
 Run:
 
@@ -351,7 +351,7 @@ npm.cmd run test -- app-shell
 
 Expected: FAIL because delivery events are ignored, there is no save-root path builder, and no delivery card UI exists.
 
-- [ ] **Step 3: Add minimal request / response handling in Rust**
+- [x] **Step 3: Add minimal request / response handling in Rust**
 
 In `src-tauri/src/commands.rs` add:
 
@@ -372,7 +372,7 @@ pub fn build_delivery_output_path(save_root: &Path, relative_path: &str) -> Path
 }
 ```
 
-- [ ] **Step 4: Add minimal frontend decision and open-directory wrappers**
+- [x] **Step 4: Add minimal frontend decision and open-directory wrappers**
 
 In `src/desktop/api.ts` add:
 
@@ -424,7 +424,7 @@ async function handleAcceptDelivery(requestId: string) {
 }
 ```
 
-- [ ] **Step 5: Run full verification**
+- [x] **Step 5: Run full verification**
 
 Run:
 

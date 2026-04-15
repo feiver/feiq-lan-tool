@@ -127,6 +127,8 @@ pub struct FileOffer {
     pub file_size: u64,
     pub from_device_id: String,
     pub to_device_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub request_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

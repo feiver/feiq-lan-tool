@@ -10,6 +10,7 @@ use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use feiq_lan_tool_lib::file_transfer::{
+    build_delivery_output_path,
     read_file_offer,
     mark_transfer_status,
     receive_file,
@@ -183,6 +184,7 @@ fn send_file_with_offer_writes_metadata_before_file_bytes() {
         file_size: content.len() as u64,
         from_device_id: "local-device".into(),
         to_device_id: "device-a".into(),
+        request_id: None,
     };
 
     let server = thread::spawn(move || {
@@ -202,4 +204,12 @@ fn send_file_with_offer_writes_metadata_before_file_bytes() {
     assert_eq!(received_bytes, content);
 
     fs::remove_file(path).expect("cleanup temp file");
+}
+
+#[test]
+fn build_delivery_output_path_keeps_relative_structure_under_save_root() {
+    assert_eq!(
+        build_delivery_output_path(PathBuf::from("D:/接收区").as_path(), "项目资料/图片/logo.png"),
+        PathBuf::from("D:/接收区/项目资料/图片/logo.png")
+    );
 }

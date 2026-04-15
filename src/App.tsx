@@ -4,11 +4,14 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 
 import { useAppStore } from "./app/store";
 import {
+  openDirectory,
   pickDeliveryDirectory,
   pickDeliveryFiles,
+  pickSaveDirectory,
   sendBroadcastMessage,
+  sendDeliveryRequest,
+  sendDeliveryResponse,
   sendDirectMessage,
-  sendFileToDevice,
   syncRuntimeSettings,
 } from "./desktop/api";
 import { ChatPanel } from "./desktop/modules/chat/ChatPanel";
@@ -18,14 +21,12 @@ import {
   createPendingDirectoryEntry,
   mergePendingDeliveryEntries,
   type PendingDeliveryEntry,
-  summarizeDeliverySelection,
 } from "./desktop/modules/chat/delivery";
 import { ContactsPanel } from "./desktop/modules/contacts/ContactsPanel";
 import { SettingsPanel } from "./desktop/modules/settings/SettingsPanel";
 import { TransfersPanel } from "./desktop/modules/transfers/TransfersPanel";
 import type {
   ChatMessage,
-  DeliveryEntry,
   KnownDevice,
   MessagePayload,
   TransferTask,
@@ -256,40 +257,59 @@ function App() {
       return;
     }
 
-    const summary = summarizeDeliverySelection(pendingDeliveries);
-    const standaloneFiles = pendingDeliveries.filter(
-      (entry) => entry.kind === "file" && entry.group_name === null,
-    );
+    const sentAtMs = Date.now();
+    const historyMessage = await sendDeliveryRequest({
+      addr: `${activeDevice.ip_addr}:${activeDevice.message_port}`,
+      fileAddr: `${activeDevice.ip_addr}:${activeDevice.file_port}`,
+      requestId: `request-${sentAtMs}-${Math.random().toString(16).slice(2)}`,
+      toDeviceId: activeDevice.device_id,
+      sentAtMs,
+      entries: pendingDeliveries,
+    });
 
-    if (!summary.hasDirectoryLikeEntries) {
-      await Promise.all(
-        standaloneFiles.map((entry) =>
-          sendFileToDevice(
-            `${activeDevice.ip_addr}:${activeDevice.file_port}`,
-            entry.source_path,
-            activeDevice.device_id,
-          ),
-        ),
-      );
-      setPendingDeliveries([]);
+    addMessage(historyMessage);
+    setPendingDeliveries([]);
+  }
+
+  async function handleOpenDeliveryDirectory(path: string) {
+    await openDirectory(path);
+  }
+
+  async function handleAcceptDelivery(requestId: string) {
+    if (!activeDevice) {
       return;
     }
 
-    addMessage({
-      message_id: `delivery-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      from_device_id: settings.deviceId,
-      to_device_id: activeDevice.device_id,
-      content: formatPendingDeliveryMessage(summary),
-      sent_at_ms: Date.now(),
-      kind: "delivery",
-      delivery: {
-        request_id: `request-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-        status: "PendingDecision",
-        entries: pendingDeliveries.map(mapPendingDeliveryEntry),
-        save_root: null,
-      },
+    const saveRoot = await pickSaveDirectory();
+    if (!saveRoot) {
+      return;
+    }
+
+    const updatedMessage = await sendDeliveryResponse({
+      addr: `${activeDevice.ip_addr}:${activeDevice.message_port}`,
+      requestId,
+      toDeviceId: activeDevice.device_id,
+      decision: "Accepted",
+      saveRoot,
     });
-    setPendingDeliveries([]);
+
+    addMessage(updatedMessage);
+  }
+
+  async function handleRejectDelivery(requestId: string) {
+    if (!activeDevice) {
+      return;
+    }
+
+    const updatedMessage = await sendDeliveryResponse({
+      addr: `${activeDevice.ip_addr}:${activeDevice.message_port}`,
+      requestId,
+      toDeviceId: activeDevice.device_id,
+      decision: "Rejected",
+      saveRoot: null,
+    });
+
+    addMessage(updatedMessage);
   }
 
   const visibleMessages = messages.filter((message) => {
@@ -331,6 +351,9 @@ function App() {
         onSendDirect={() => void handleSendDirect()}
         onSendBroadcast={() => void handleSendBroadcast()}
         onSendDelivery={() => void handleSendDelivery()}
+        onAcceptDelivery={(requestId) => void handleAcceptDelivery(requestId)}
+        onRejectDelivery={(requestId) => void handleRejectDelivery(requestId)}
+        onOpenDeliveryDirectory={(path) => void handleOpenDeliveryDirectory(path)}
         canSendDirect={Boolean(activeDevice && draftMessage.trim())}
         canSendBroadcast={Boolean(devices.length > 0 && draftMessage.trim())}
         canSendDelivery={Boolean(activeDevice && pendingDeliveries.length > 0)}
@@ -350,32 +373,6 @@ function App() {
       </div>
     </main>
   );
-}
-
-function formatPendingDeliveryMessage(
-  summary: ReturnType<typeof summarizeDeliverySelection>,
-): string {
-  const fragments: string[] = [];
-
-  if (summary.groups.length > 0) {
-    fragments.push(`${summary.groups.length} 个目录组`);
-  }
-
-  if (summary.files.length > 0) {
-    fragments.push(`${summary.files.length} 个文件`);
-  }
-
-  return `待投递内容：${fragments.join("，")}`;
-}
-
-function mapPendingDeliveryEntry(entry: PendingDeliveryEntry): DeliveryEntry {
-  return {
-    entry_id: `entry-${entry.kind}-${entry.display_name}`,
-    display_name: entry.display_name,
-    relative_path: entry.relative_path,
-    file_size: entry.file_size,
-    kind: entry.kind === "directory" ? "Directory" : "File",
-  };
 }
 
 export default App;

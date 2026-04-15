@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::{self, Read, Write};
 use std::net::TcpStream;
 use std::path::Path;
+use std::path::PathBuf;
 
 use crate::models::{FileOffer, TransferStatus, TransferTask};
 
@@ -99,6 +100,13 @@ pub fn receive_file(
     on_progress(task);
 
     Ok(received)
+}
+
+pub fn build_delivery_output_path(save_root: &Path, relative_path: &str) -> PathBuf {
+    relative_path
+        .split('/')
+        .filter(|segment| !segment.is_empty())
+        .fold(save_root.to_path_buf(), |path, segment| path.join(segment))
 }
 
 pub fn read_file_offer(reader: &mut impl Read) -> io::Result<FileOffer> {

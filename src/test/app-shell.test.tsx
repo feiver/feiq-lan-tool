@@ -41,6 +41,10 @@ vi.mock("../desktop/api", async () => {
     syncRuntimeSettings: vi.fn(),
     pickDeliveryFiles: vi.fn(),
     pickDeliveryDirectory: vi.fn(),
+    pickSaveDirectory: vi.fn(),
+    sendDeliveryRequest: vi.fn(),
+    sendDeliveryResponse: vi.fn(),
+    openDirectory: vi.fn(),
     sendFileToDevice: vi.fn(),
     sendDirectMessage: vi.fn(),
     sendBroadcastMessage: vi.fn(),
@@ -54,6 +58,10 @@ const mockedGetRuntimeSettings = vi.mocked(desktopApi.getRuntimeSettings);
 const mockedSyncRuntimeSettings = vi.mocked(desktopApi.syncRuntimeSettings);
 const mockedPickDeliveryFiles = vi.mocked(desktopApi.pickDeliveryFiles);
 const mockedPickDeliveryDirectory = vi.mocked(desktopApi.pickDeliveryDirectory);
+const mockedPickSaveDirectory = vi.mocked(desktopApi.pickSaveDirectory);
+const mockedSendDeliveryRequest = vi.mocked(desktopApi.sendDeliveryRequest);
+const mockedSendDeliveryResponse = vi.mocked(desktopApi.sendDeliveryResponse);
+const mockedOpenDirectory = vi.mocked(desktopApi.openDirectory);
 const mockedSendFileToDevice = vi.mocked(desktopApi.sendFileToDevice);
 const mockedSendDirectMessage = vi.mocked(desktopApi.sendDirectMessage);
 const mockedSendBroadcastMessage = vi.mocked(desktopApi.sendBroadcastMessage);
@@ -80,6 +88,10 @@ beforeEach(() => {
   mockedSyncRuntimeSettings.mockReset();
   mockedPickDeliveryFiles.mockReset();
   mockedPickDeliveryDirectory.mockReset();
+  mockedPickSaveDirectory.mockReset();
+  mockedSendDeliveryRequest.mockReset();
+  mockedSendDeliveryResponse.mockReset();
+  mockedOpenDirectory.mockReset();
   mockedSendFileToDevice.mockReset();
   mockedSendDirectMessage.mockReset();
   mockedSendBroadcastMessage.mockReset();
@@ -100,6 +112,52 @@ beforeEach(() => {
   mockedSyncRuntimeSettings.mockResolvedValue();
   mockedPickDeliveryFiles.mockResolvedValue([]);
   mockedPickDeliveryDirectory.mockResolvedValue(null);
+  mockedPickSaveDirectory.mockResolvedValue(null);
+  mockedSendDeliveryRequest.mockResolvedValue({
+    message_id: "request-default",
+    from_device_id: "local-device",
+    to_device_id: "device-a",
+    content: "待投递内容：1 个文件",
+    sent_at_ms: 1002,
+    kind: "delivery",
+    delivery: {
+      request_id: "request-default",
+      status: "PendingDecision",
+      save_root: null,
+      entries: [
+        {
+          entry_id: "entry-default",
+          display_name: "demo.txt",
+          relative_path: "demo.txt",
+          file_size: 12,
+          kind: "File",
+        },
+      ],
+    },
+  });
+  mockedSendDeliveryResponse.mockResolvedValue({
+    message_id: "request-default",
+    from_device_id: "device-a",
+    to_device_id: "local-device",
+    content: "待投递内容：1 个文件",
+    sent_at_ms: 1002,
+    kind: "delivery",
+    delivery: {
+      request_id: "request-default",
+      status: "Accepted",
+      save_root: "D:/接收区",
+      entries: [
+        {
+          entry_id: "entry-default",
+          display_name: "demo.txt",
+          relative_path: "demo.txt",
+          file_size: 12,
+          kind: "File",
+        },
+      ],
+    },
+  });
+  mockedOpenDirectory.mockResolvedValue();
   mockedSendFileToDevice.mockResolvedValue();
   mockedSendDirectMessage.mockResolvedValue();
   mockedSendBroadcastMessage.mockResolvedValue();
@@ -267,6 +325,126 @@ test("shows grouped folders and standalone files in the pending delivery preview
     expect(screen.getByText("项目资料/")).toBeInTheDocument();
     expect(screen.getByText("报价单.xlsx")).toBeInTheDocument();
     expect(screen.getByText("封面.png")).toBeInTheDocument();
+  });
+});
+
+test("shows accept and cancel actions on incoming delivery cards", async () => {
+  mockedListDevices.mockResolvedValue([
+    {
+      device_id: "device-a",
+      nickname: "Alice",
+      host_name: "alice-pc",
+      ip_addr: "192.168.1.10",
+      message_port: 37001,
+      file_port: 37002,
+      last_seen_ms: 1000,
+    },
+  ]);
+
+  render(<App />);
+
+  await waitFor(() => {
+    expect(screen.getByText("当前会话：Alice")).toBeInTheDocument();
+  });
+
+  const messageListener = eventListeners.get("chat-message-received");
+  expect(messageListener).toBeDefined();
+
+  await act(async () => {
+    messageListener?.({
+      payload: {
+        message_id: "msg-delivery-1",
+        from_device_id: "device-a",
+        to_device_id: "local-device",
+        content: "delivery request",
+        sent_at_ms: 1002,
+        kind: "delivery",
+        delivery: {
+          request_id: "req-1",
+          status: "PendingDecision",
+          save_root: null,
+          entries: [
+            {
+              entry_id: "entry-file",
+              display_name: "报价单.xlsx",
+              relative_path: "报价单.xlsx",
+              file_size: 1024,
+              kind: "File",
+            },
+          ],
+        },
+      },
+    });
+  });
+
+  await waitFor(() => {
+    expect(screen.getByRole("button", { name: "接收" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "取消" })).toBeInTheDocument();
+  });
+});
+
+test("sends accepted delivery response with the selected save directory", async () => {
+  const user = userEvent.setup();
+
+  mockedListDevices.mockResolvedValue([
+    {
+      device_id: "device-a",
+      nickname: "Alice",
+      host_name: "alice-pc",
+      ip_addr: "192.168.1.10",
+      message_port: 37001,
+      file_port: 37002,
+      last_seen_ms: 1000,
+    },
+  ]);
+  mockedPickSaveDirectory.mockResolvedValue("D:/接收区");
+
+  render(<App />);
+
+  await waitFor(() => {
+    expect(screen.getByText("当前会话：Alice")).toBeInTheDocument();
+  });
+
+  const messageListener = eventListeners.get("chat-message-received");
+  expect(messageListener).toBeDefined();
+
+  await act(async () => {
+    messageListener?.({
+      payload: {
+        message_id: "req-1",
+        from_device_id: "device-a",
+        to_device_id: "local-device",
+        content: "delivery request",
+        sent_at_ms: 1002,
+        kind: "delivery",
+        delivery: {
+          request_id: "req-1",
+          status: "PendingDecision",
+          save_root: null,
+          entries: [
+            {
+              entry_id: "entry-file",
+              display_name: "报价单.xlsx",
+              relative_path: "报价单.xlsx",
+              file_size: 1024,
+              kind: "File",
+            },
+          ],
+        },
+      },
+    });
+  });
+
+  await user.click(screen.getByRole("button", { name: "接收" }));
+
+  await waitFor(() => {
+    expect(mockedSendDeliveryResponse).toHaveBeenCalledWith({
+      addr: "192.168.1.10:37001",
+      requestId: "req-1",
+      toDeviceId: "device-a",
+      decision: "Accepted",
+      saveRoot: "D:/接收区",
+    });
   });
 });
 
@@ -554,7 +732,7 @@ test("shows transferred bytes when total file size is unknown", async () => {
   });
 });
 
-test("sends selected standalone files through the legacy file transfer command", async () => {
+test("sends selected files as a delivery request to the active device", async () => {
   const user = userEvent.setup();
 
   mockedListDevices.mockResolvedValue([
@@ -581,10 +759,12 @@ test("sends selected standalone files through the legacy file transfer command",
   await user.click(screen.getByRole("button", { name: "发送投递" }));
 
   await waitFor(() => {
-    expect(mockedSendFileToDevice).toHaveBeenCalledWith(
-      "192.168.1.10:37002",
-      "C:\\temp\\demo.txt",
-      "device-a",
+    expect(mockedSendDeliveryRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        addr: "192.168.1.10:37001",
+        fileAddr: "192.168.1.10:37002",
+        toDeviceId: "device-a",
+      }),
     );
   });
 });

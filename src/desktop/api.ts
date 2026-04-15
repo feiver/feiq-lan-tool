@@ -1,7 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
+import { openPath } from "@tauri-apps/plugin-opener";
 
 import type { ChatMessage, KnownDevice, MessagePayload, TransferTask } from "./types";
+import type { PendingDeliveryEntry } from "./modules/chat/delivery";
 
 type RuntimeSettingsPayload = {
   deviceId: string;
@@ -76,6 +78,42 @@ export async function pickDeliveryDirectory(): Promise<string | null> {
   });
 
   return typeof selected === "string" ? selected : Array.isArray(selected) ? selected[0] ?? null : null;
+}
+
+export async function pickSaveDirectory(): Promise<string | null> {
+  const selected = await open({
+    title: "选择接收目录",
+    directory: true,
+    multiple: false,
+    recursive: true,
+  });
+
+  return typeof selected === "string" ? selected : null;
+}
+
+export function openDirectory(path: string): Promise<void> {
+  return openPath(path);
+}
+
+export function sendDeliveryRequest(payload: {
+  addr: string;
+  fileAddr: string;
+  requestId: string;
+  toDeviceId: string;
+  sentAtMs: number;
+  entries: PendingDeliveryEntry[];
+}): Promise<ChatMessage> {
+  return invoke("send_delivery_request", payload);
+}
+
+export function sendDeliveryResponse(payload: {
+  addr: string;
+  requestId: string;
+  toDeviceId: string;
+  decision: "Accepted" | "Rejected";
+  saveRoot: string | null;
+}): Promise<ChatMessage> {
+  return invoke("send_delivery_response", payload);
 }
 
 export function sendFileToDevice(

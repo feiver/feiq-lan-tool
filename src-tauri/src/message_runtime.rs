@@ -1,5 +1,5 @@
 use crate::app_state::AppState;
-use crate::models::{ChatMessage, LanEvent, MessagePayload};
+use crate::models::{ChatDelivery, ChatMessage, DeliveryStatus, LanEvent, MessagePayload};
 
 pub const CHAT_MESSAGE_RECEIVED_EVENT: &str = "chat-message-received";
 
@@ -12,12 +12,36 @@ pub fn record_incoming_message(state: &AppState, event: LanEvent) -> Option<Chat
         }
         LanEvent::BroadcastMessage(payload) => {
             let message = chat_message_from_payload(payload, "broadcast");
-            state.push_message(message.clone());
+            state.upsert_message(message.clone());
             Some(message)
         }
         LanEvent::DeviceAnnouncement(_) => None,
-        LanEvent::DeliveryRequest(_) => None,
-        LanEvent::DeliveryResponse(_) => None,
+        LanEvent::DeliveryRequest(request) => {
+            let message = ChatMessage {
+                message_id: request.request_id.clone(),
+                from_device_id: request.from_device_id,
+                to_device_id: request.to_device_id,
+                content: "delivery request".into(),
+                sent_at_ms: request.sent_at_ms,
+                kind: "delivery".into(),
+                delivery: Some(ChatDelivery {
+                    request_id: request.request_id,
+                    status: DeliveryStatus::PendingDecision,
+                    entries: request.entries,
+                    save_root: None,
+                }),
+            };
+            state.upsert_message(message.clone());
+            Some(message)
+        }
+        LanEvent::DeliveryResponse(response) => state.update_delivery_status(
+            &response.request_id,
+            match response.decision {
+                crate::models::DeliveryDecision::Accepted => DeliveryStatus::Accepted,
+                crate::models::DeliveryDecision::Rejected => DeliveryStatus::Rejected,
+            },
+            response.save_root,
+        ),
     }
 }
 

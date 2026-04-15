@@ -67,7 +67,9 @@ export const useAppStore = create<AppStore>((set) => ({
     set({ selectedDeviceId: deviceId });
   },
   addMessage(message) {
-    set((state) => ({ messages: [...state.messages, message] }));
+    set((state) => ({
+      messages: upsertMessage(state.messages, message),
+    }));
   },
   updateSettings(patch) {
     set((state) => ({
@@ -96,5 +98,16 @@ function upsertTransferTask(tasks: TransferTask[], task: TransferTask): Transfer
 
   const next = [...tasks];
   next[index] = task;
+  return next;
+}
+
+function upsertMessage(messages: ChatMessage[], message: ChatMessage): ChatMessage[] {
+  const index = messages.findIndex((item) => item.message_id === message.message_id);
+  if (index === -1) {
+    return [...messages, message];
+  }
+
+  const next = [...messages];
+  next[index] = message;
   return next;
 }

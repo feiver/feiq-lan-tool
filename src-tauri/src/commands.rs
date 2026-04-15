@@ -1,14 +1,24 @@
-use std::path::Path;
+use std::fs;
+use std::path::{Path, PathBuf};
 
+use serde::Deserialize;
 use tauri::{AppHandle, Emitter, State};
 
-use feiq_lan_tool_lib::app_state::AppState;
+use feiq_lan_tool_lib::app_state::{AppState, OutgoingDeliveryFile, OutgoingDeliverySession};
 use feiq_lan_tool_lib::file_transfer::send_file_with_offer_and_progress;
-use feiq_lan_tool_lib::message_server::{send_broadcast, send_message};
+use feiq_lan_tool_lib::message_server::{send_broadcast, send_lan_event, send_message};
 use feiq_lan_tool_lib::models::{
+    ChatDelivery,
     ChatMessage,
+    DeliveryDecision,
+    DeliveryEntry,
+    DeliveryEntryKind,
+    DeliveryRequest,
+    DeliveryResponse,
+    DeliveryStatus,
     FileOffer,
     KnownDevice,
+    LanEvent,
     MessagePayload,
     RuntimeSettings,
     TransferStatus,
@@ -17,6 +27,16 @@ use feiq_lan_tool_lib::models::{
 use feiq_lan_tool_lib::settings_store::save_settings;
 
 const TRANSFER_UPDATED_EVENT: &str = "transfer-updated";
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct DeliverySourcePayload {
+    source_path: String,
+    display_name: String,
+    relative_path: String,
+    group_name: Option<String>,
+    kind: String,
+    file_size: u64,
+}
 
 #[tauri::command]
 pub async fn list_devices(state: State<'_, AppState>) -> Result<Vec<KnownDevice>, String> {
@@ -85,6 +105,7 @@ pub async fn send_file_to_device(
         file_size,
         from_device_id: task.from_device_id.clone(),
         to_device_id: task.to_device_id.clone(),
+        request_id: None,
     };
 
     state.upsert_transfer(task.clone());
@@ -148,4 +169,209 @@ pub async fn send_broadcast_message(
         .map_err(|err| err.to_string())?;
     state.push_message(history_message);
     Ok(())
+}
+
+#[tauri::command]
+pub async fn send_delivery_request(
+    state: State<'_, AppState>,
+    addr: String,
+    file_addr: String,
+    request_id: String,
+    to_device_id: String,
+    sent_at_ms: i64,
+    entries: Vec<DeliverySourcePayload>,
+) -> Result<ChatMessage, String> {
+    let settings = state.runtime_settings();
+    let resolved_files = expand_delivery_sources(&entries)?;
+    if resolved_files.is_empty() {
+        return Err("delivery entries are empty".into());
+    }
+
+    let delivery_entries = resolved_files
+        .iter()
+        .enumerate()
+        .map(|(index, file)| DeliveryEntry {
+            entry_id: format!("{request_id}-entry-{index}"),
+            display_name: file.display_name.clone(),
+            relative_path: file.relative_path.clone(),
+            file_size: file.file_size,
+            kind: DeliveryEntryKind::File,
+        })
+        .collect::<Vec<_>>();
+
+    let request = DeliveryRequest {
+        request_id: request_id.clone(),
+        from_device_id: settings.device_id.clone(),
+        to_device_id: to_device_id.clone(),
+        sent_at_ms,
+        entries: delivery_entries.clone(),
+    };
+
+    send_lan_event(&addr, LanEvent::DeliveryRequest(request))
+        .await
+        .map_err(|err| err.to_string())?;
+
+    state.register_outgoing_delivery(OutgoingDeliverySession {
+        request_id: request_id.clone(),
+        file_addr,
+        from_device_id: settings.device_id.clone(),
+        to_device_id: to_device_id.clone(),
+        files: resolved_files,
+    });
+
+    let history_message = ChatMessage {
+        message_id: request_id.clone(),
+        from_device_id: settings.device_id,
+        to_device_id,
+        content: format_delivery_message_content(&delivery_entries),
+        sent_at_ms,
+        kind: "delivery".into(),
+        delivery: Some(ChatDelivery {
+            request_id,
+            status: DeliveryStatus::PendingDecision,
+            entries: delivery_entries,
+            save_root: None,
+        }),
+    };
+
+    state.upsert_message(history_message.clone());
+    Ok(history_message)
+}
+
+#[tauri::command]
+pub async fn send_delivery_response(
+    state: State<'_, AppState>,
+    addr: String,
+    request_id: String,
+    to_device_id: String,
+    decision: String,
+    save_root: Option<String>,
+) -> Result<ChatMessage, String> {
+    let settings = state.runtime_settings();
+    let decision = parse_delivery_decision(&decision)?;
+
+    if matches!(decision, DeliveryDecision::Accepted) {
+        let root = save_root
+            .clone()
+            .ok_or_else(|| "save root is required when accepting delivery".to_string())?;
+        state
+            .prepare_incoming_delivery(&request_id, root)
+            .ok_or_else(|| "delivery request not found".to_string())?;
+    }
+
+    let response = DeliveryResponse {
+        request_id: request_id.clone(),
+        from_device_id: settings.device_id,
+        to_device_id,
+        decision: decision.clone(),
+        save_root: save_root.clone(),
+    };
+
+    send_lan_event(&addr, LanEvent::DeliveryResponse(response))
+        .await
+        .map_err(|err| err.to_string())?;
+
+    state
+        .update_delivery_status(
+            &request_id,
+            match decision {
+                DeliveryDecision::Accepted => DeliveryStatus::Accepted,
+                DeliveryDecision::Rejected => DeliveryStatus::Rejected,
+            },
+            save_root,
+        )
+        .ok_or_else(|| "delivery request not found".to_string())
+}
+
+fn parse_delivery_decision(decision: &str) -> Result<DeliveryDecision, String> {
+    match decision {
+        "Accepted" => Ok(DeliveryDecision::Accepted),
+        "Rejected" => Ok(DeliveryDecision::Rejected),
+        _ => Err(format!("unsupported delivery decision: {decision}")),
+    }
+}
+
+fn format_delivery_message_content(entries: &[DeliveryEntry]) -> String {
+    let file_count = entries.len();
+    format!("待投递内容：{file_count} 个文件")
+}
+
+fn expand_delivery_sources(entries: &[DeliverySourcePayload]) -> Result<Vec<OutgoingDeliveryFile>, String> {
+    let mut resolved = Vec::new();
+
+    for entry in entries {
+        match entry.kind.as_str() {
+            "directory" => collect_directory_files(
+                Path::new(&entry.source_path),
+                &entry.display_name,
+                &mut resolved,
+            )?,
+            _ => resolved.push(resolve_file_source(entry)?),
+        }
+    }
+
+    Ok(resolved)
+}
+
+fn resolve_file_source(entry: &DeliverySourcePayload) -> Result<OutgoingDeliveryFile, String> {
+    let metadata = fs::metadata(&entry.source_path).map_err(|err| err.to_string())?;
+    Ok(OutgoingDeliveryFile {
+        source_path: entry.source_path.clone(),
+        relative_path: normalize_relative_path(&entry.relative_path, entry.group_name.as_deref()),
+        display_name: entry.display_name.clone(),
+        file_size: if entry.file_size > 0 {
+            entry.file_size
+        } else {
+            metadata.len()
+        },
+    })
+}
+
+fn collect_directory_files(
+    root: &Path,
+    group_name: &str,
+    resolved: &mut Vec<OutgoingDeliveryFile>,
+) -> Result<(), String> {
+    for child in fs::read_dir(root).map_err(|err| err.to_string())? {
+        let child = child.map_err(|err| err.to_string())?;
+        let path = child.path();
+        let metadata = child.metadata().map_err(|err| err.to_string())?;
+
+        if metadata.is_dir() {
+            collect_directory_files(&path, group_name, resolved)?;
+            continue;
+        }
+
+        let relative = path
+            .strip_prefix(root)
+            .map_err(|err| err.to_string())?;
+        let relative_path = PathBuf::from(group_name)
+            .join(relative)
+            .to_string_lossy()
+            .replace('\\', "/");
+
+        resolved.push(OutgoingDeliveryFile {
+            source_path: path.to_string_lossy().into_owned(),
+            relative_path,
+            display_name: path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .map(ToOwned::to_owned)
+                .ok_or_else(|| "invalid delivery file name".to_string())?,
+            file_size: metadata.len(),
+        });
+    }
+
+    Ok(())
+}
+
+fn normalize_relative_path(relative_path: &str, group_name: Option<&str>) -> String {
+    let normalized = relative_path.replace('\\', "/");
+    if let Some(group_name) = group_name {
+        if normalized.starts_with(&format!("{group_name}/")) || normalized == group_name {
+            return normalized;
+        }
+    }
+
+    normalized
 }

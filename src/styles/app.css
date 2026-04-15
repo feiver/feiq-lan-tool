@@ -177,6 +177,42 @@ body {
   opacity: 0.78;
 }
 
+.delivery-card {
+  display: grid;
+  gap: 10px;
+  min-width: 260px;
+}
+
+.delivery-card-header,
+.delivery-card-actions,
+.delivery-card-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.delivery-card-body,
+.delivery-card-list {
+  display: grid;
+  gap: 8px;
+}
+
+.delivery-card-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.delivery-card-actions button {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: rgba(15, 23, 42, 0.12);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
 .chat-actions {
   display: flex;
   gap: 12px;
