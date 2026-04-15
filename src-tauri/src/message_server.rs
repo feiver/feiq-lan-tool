@@ -1,10 +1,10 @@
-use std::io::{self, Write};
+use std::io::{self, Read, Write};
 use std::net::TcpStream;
 
 use serde::{Deserialize, Serialize};
 
 use crate::models::{LanEvent, MessagePayload};
-use crate::protocol::encode_event;
+use crate::protocol::{decode_event, encode_event};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MessageEnvelope {
@@ -29,4 +29,11 @@ async fn send_event(addr: &str, event: LanEvent) -> io::Result<()> {
         encode_event(&event).map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
     stream.write_all(&bytes)?;
     Ok(())
+}
+
+pub fn read_event(reader: &mut impl Read) -> io::Result<LanEvent> {
+    let mut bytes = Vec::new();
+    reader.read_to_end(&mut bytes)?;
+
+    decode_event(&bytes).map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))
 }

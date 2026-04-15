@@ -5,7 +5,9 @@ use std::sync::Arc;
 use std::task::{Context, Poll, Wake, Waker};
 use std::thread;
 
-use feiq_lan_tool_lib::message_server::{send_broadcast, send_message, MessageEnvelope};
+use feiq_lan_tool_lib::message_server::{
+    read_event, send_broadcast, send_message, MessageEnvelope,
+};
 use feiq_lan_tool_lib::models::{LanEvent, MessagePayload};
 use feiq_lan_tool_lib::protocol::decode_event;
 
@@ -97,4 +99,29 @@ fn send_broadcast_writes_broadcast_event_to_tcp_stream() {
     let event = decode_event(&bytes).expect("decode event");
 
     assert_eq!(event, LanEvent::BroadcastMessage(expected_payload));
+}
+
+#[test]
+fn read_event_decodes_direct_message_from_tcp_stream() {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("bind listener");
+    let addr = listener.local_addr().expect("listener addr");
+    let payload = MessagePayload {
+        message_id: "msg-read".into(),
+        from_device_id: "device-a".into(),
+        to_device_id: "device-b".into(),
+        content: "hello receiver".into(),
+        sent_at_ms: 1_712_000_020,
+    };
+    let expected_payload = payload.clone();
+
+    let server = thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("accept connection");
+        read_event(&mut stream).expect("read event")
+    });
+
+    block_on_ready(send_message(&addr.to_string(), payload)).expect("send message");
+
+    let event = server.join().expect("join server thread");
+
+    assert_eq!(event, LanEvent::DirectMessage(expected_payload));
 }
