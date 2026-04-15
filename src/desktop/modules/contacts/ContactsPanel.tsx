@@ -2,9 +2,15 @@ import type { KnownDevice } from "../../types";
 
 type ContactsPanelProps = {
   devices: KnownDevice[];
+  selectedDeviceId: string | null;
+  onSelectDevice: (deviceId: string) => void;
 };
 
-export function ContactsPanel({ devices }: ContactsPanelProps) {
+export function ContactsPanel({
+  devices,
+  selectedDeviceId,
+  onSelectDevice,
+}: ContactsPanelProps) {
   return (
     <section className="panel panel-contacts">
       <div className="panel-header">
@@ -12,15 +18,17 @@ export function ContactsPanel({ devices }: ContactsPanelProps) {
         <h2>在线联系人</h2>
       </div>
       {devices.length > 0 ? (
-        devices.map((device, index) => (
-          <div
+        devices.map((device) => (
+          <button
             key={device.device_id}
-            className={`contact-card${index === 0 ? " is-active" : ""}`}
+            type="button"
+            className={`contact-card${selectedDeviceId === device.device_id ? " is-active" : ""}`}
+            onClick={() => onSelectDevice(device.device_id)}
           >
             <strong>{device.nickname}</strong>
             <span>{device.host_name}</span>
             <span>{device.ip_addr}</span>
-          </div>
+          </button>
         ))
       ) : (
         <>

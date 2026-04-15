@@ -1,4 +1,8 @@
-export function ChatPanel() {
+type ChatPanelProps = {
+  activeDeviceName: string | null;
+};
+
+export function ChatPanel({ activeDeviceName }: ChatPanelProps) {
   return (
     <section className="panel panel-chat">
       <div className="panel-header">
@@ -6,8 +10,17 @@ export function ChatPanel() {
         <h2>消息会话</h2>
       </div>
       <div className="chat-placeholder">
-        <p>消息流、单聊输入和广播动作会在下一步接入。</p>
-        <p>当前阶段先稳定桌面壳层与布局骨架。</p>
+        {activeDeviceName ? (
+          <>
+            <p>{`当前会话：${activeDeviceName}`}</p>
+            <p>会话消息流将在下一步接入，当前已支持联系人切换联动。</p>
+          </>
+        ) : (
+          <>
+            <p>请选择一个在线联系人开始会话。</p>
+            <p>消息流、单聊输入和广播动作会在下一步接入。</p>
+          </>
+        )}
       </div>
     </section>
   );

@@ -92,6 +92,13 @@ body {
   color: #3d526f;
 }
 
+.contact-card {
+  width: 100%;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
 .contact-card strong,
 .transfer-list strong {
   color: #152238;

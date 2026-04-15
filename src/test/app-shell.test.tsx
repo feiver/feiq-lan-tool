@@ -1,6 +1,8 @@
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 
+import { useAppStore } from "../app/store";
 import App from "../App";
 import * as desktopApi from "../desktop/api";
 
@@ -20,6 +22,11 @@ const mockedListDevices = vi.mocked(desktopApi.listDevices);
 const mockedListTransfers = vi.mocked(desktopApi.listTransfers);
 
 beforeEach(() => {
+  useAppStore.setState({
+    devices: [],
+    transfers: [],
+    selectedDeviceId: null,
+  });
   mockedListDevices.mockReset();
   mockedListTransfers.mockReset();
   mockedListDevices.mockResolvedValue([]);
@@ -68,5 +75,42 @@ test("loads devices and transfers from desktop api", async () => {
   await waitFor(() => {
     expect(screen.getByText("Alice")).toBeInTheDocument();
     expect(screen.getByText("demo.txt")).toBeInTheDocument();
+  });
+});
+
+test("switches active chat session when selecting another contact", async () => {
+  const user = userEvent.setup();
+
+  mockedListDevices.mockResolvedValue([
+    {
+      device_id: "device-a",
+      nickname: "Alice",
+      host_name: "alice-pc",
+      ip_addr: "192.168.1.10",
+      message_port: 37001,
+      file_port: 37002,
+      last_seen_ms: 1000,
+    },
+    {
+      device_id: "device-b",
+      nickname: "Bob",
+      host_name: "bob-mac",
+      ip_addr: "192.168.1.11",
+      message_port: 37001,
+      file_port: 37002,
+      last_seen_ms: 1001,
+    },
+  ]);
+
+  render(<App />);
+
+  await waitFor(() => {
+    expect(screen.getByText("当前会话：Alice")).toBeInTheDocument();
+  });
+
+  await user.click(screen.getByRole("button", { name: /Bob/ }));
+
+  await waitFor(() => {
+    expect(screen.getByText("当前会话：Bob")).toBeInTheDocument();
   });
 });
