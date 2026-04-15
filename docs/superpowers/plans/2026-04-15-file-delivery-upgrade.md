@@ -19,7 +19,7 @@
 - Modify: `D:\我的工作空间\feiq-lan-tool\src-tauri\tests\commands_tests.rs`
 - Modify: `D:\我的工作空间\feiq-lan-tool\src\desktop\types.ts`
 
-- [ ] **Step 1: Write the failing Rust tests**
+- [x] **Step 1: Write the failing Rust tests**
 
 Add a request / response protocol roundtrip plus a state-update test:
 
@@ -67,7 +67,7 @@ fn app_state_can_update_delivery_message_status() {
 }
 ```
 
-- [ ] **Step 2: Run the tests to verify RED**
+- [x] **Step 2: Run the tests to verify RED**
 
 Run:
 
@@ -78,7 +78,7 @@ cargo test --test commands_tests
 
 Expected: FAIL because delivery models and state helpers do not exist.
 
-- [ ] **Step 3: Add the minimal shared models**
+- [x] **Step 3: Add the minimal shared models**
 
 Update `src-tauri/src/models.rs` with:
 
@@ -99,7 +99,7 @@ pub struct ChatMessage { /* existing fields */, pub delivery: Option<ChatDeliver
 pub enum LanEvent { DeviceAnnouncement(DeviceAnnouncement), DirectMessage(MessagePayload), BroadcastMessage(MessagePayload), DeliveryRequest(DeliveryRequest), DeliveryResponse(DeliveryResponse) }
 ```
 
-- [ ] **Step 4: Add the minimal AppState helper and TS mirrors**
+- [x] **Step 4: Add the minimal AppState helper and TS mirrors**
 
 In `src-tauri/src/app_state.rs`:
 
@@ -125,7 +125,7 @@ export type ChatDelivery = { request_id: string; status: "PendingDecision" | "Ac
 export type ChatMessage = { message_id: string; from_device_id: string; to_device_id: string; content: string; sent_at_ms: number; kind: "direct" | "broadcast" | "delivery"; delivery?: ChatDelivery | null };
 ```
 
-- [ ] **Step 5: Run the tests to verify GREEN**
+- [x] **Step 5: Run the tests to verify GREEN**
 
 Run:
 

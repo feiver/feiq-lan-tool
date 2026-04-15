@@ -1,5 +1,12 @@
 use feiq_lan_tool_lib::app_state::AppState;
-use feiq_lan_tool_lib::models::{ChatMessage, DeviceAnnouncement, TransferStatus, TransferTask};
+use feiq_lan_tool_lib::models::{
+    ChatDelivery,
+    ChatMessage,
+    DeliveryStatus,
+    DeviceAnnouncement,
+    TransferStatus,
+    TransferTask,
+};
 
 #[test]
 fn state_helpers_return_empty_lists_by_default() {
@@ -44,6 +51,7 @@ fn state_helpers_return_devices_and_transfers() {
         content: "hello".into(),
         sent_at_ms: 1002,
         kind: "direct".into(),
+        delivery: None,
     });
 
     let devices = state.list_devices();
@@ -56,4 +64,30 @@ fn state_helpers_return_devices_and_transfers() {
     assert_eq!(messages[0].content, "hello");
     assert_eq!(transfers.len(), 1);
     assert_eq!(transfers[0].transfer_id, "tx-1");
+}
+
+#[test]
+fn app_state_can_update_delivery_message_status() {
+    let state = AppState::default();
+    state.push_message(ChatMessage {
+        message_id: "msg-delivery-1".into(),
+        from_device_id: "device-a".into(),
+        to_device_id: "device-b".into(),
+        content: "delivery request".into(),
+        sent_at_ms: 1002,
+        kind: "delivery".into(),
+        delivery: Some(ChatDelivery {
+            request_id: "req-1".into(),
+            status: DeliveryStatus::PendingDecision,
+            entries: vec![],
+            save_root: None,
+        }),
+    });
+
+    state.update_delivery_status("req-1", DeliveryStatus::Accepted, Some("D:/接收区".into()));
+
+    let messages = state.list_messages();
+    let delivery = messages[0].delivery.as_ref().expect("delivery");
+    assert_eq!(delivery.status, DeliveryStatus::Accepted);
+    assert_eq!(delivery.save_root.as_deref(), Some("D:/接收区"));
 }

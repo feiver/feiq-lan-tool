@@ -26,11 +26,56 @@ export type MessagePayload = {
   sent_at_ms: number;
 };
 
+export type DeliveryEntryKind = "File" | "Directory";
+
+export type DeliveryEntry = {
+  entry_id: string;
+  display_name: string;
+  relative_path: string;
+  file_size: number;
+  kind: DeliveryEntryKind;
+};
+
+export type DeliveryStatus =
+  | "PendingDecision"
+  | "Accepted"
+  | "Rejected"
+  | "InProgress"
+  | "Completed"
+  | "Failed"
+  | "PartialFailed";
+
+export type ChatDelivery = {
+  request_id: string;
+  status: DeliveryStatus;
+  entries: DeliveryEntry[];
+  save_root: string | null;
+};
+
+export type DeliveryRequest = {
+  request_id: string;
+  from_device_id: string;
+  to_device_id: string;
+  sent_at_ms: number;
+  entries: DeliveryEntry[];
+};
+
+export type DeliveryDecision = "Accepted" | "Rejected";
+
+export type DeliveryResponse = {
+  request_id: string;
+  from_device_id: string;
+  to_device_id: string;
+  decision: DeliveryDecision;
+  save_root: string | null;
+};
+
 export type ChatMessage = {
   message_id: string;
   from_device_id: string;
   to_device_id: string;
   content: string;
   sent_at_ms: number;
-  kind: "direct" | "broadcast";
+  kind: "direct" | "broadcast" | "delivery";
+  delivery?: ChatDelivery | null;
 };

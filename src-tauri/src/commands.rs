@@ -119,6 +119,7 @@ pub async fn send_direct_message(
         content: payload.content.clone(),
         sent_at_ms: payload.sent_at_ms,
         kind: "direct".into(),
+        delivery: None,
     };
     send_message(&addr, payload)
         .await
@@ -140,6 +141,7 @@ pub async fn send_broadcast_message(
         content: payload.content.clone(),
         sent_at_ms: payload.sent_at_ms,
         kind: "broadcast".into(),
+        delivery: None,
     };
     send_broadcast(&addr, payload)
         .await

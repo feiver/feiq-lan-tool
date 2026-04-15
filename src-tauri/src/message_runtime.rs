@@ -16,6 +16,8 @@ pub fn record_incoming_message(state: &AppState, event: LanEvent) -> Option<Chat
             Some(message)
         }
         LanEvent::DeviceAnnouncement(_) => None,
+        LanEvent::DeliveryRequest(_) => None,
+        LanEvent::DeliveryResponse(_) => None,
     }
 }
 
@@ -27,5 +29,6 @@ fn chat_message_from_payload(payload: MessagePayload, kind: &str) -> ChatMessage
         content: payload.content,
         sent_at_ms: payload.sent_at_ms,
         kind: kind.into(),
+        delivery: None,
     }
 }

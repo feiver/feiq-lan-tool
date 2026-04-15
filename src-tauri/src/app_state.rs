@@ -1,7 +1,14 @@
 use std::sync::{Arc, RwLock};
 
 use crate::discovery::DeviceRegistry;
-use crate::models::{ChatMessage, DeviceAnnouncement, KnownDevice, RuntimeSettings, TransferTask};
+use crate::models::{
+    ChatMessage,
+    DeliveryStatus,
+    DeviceAnnouncement,
+    KnownDevice,
+    RuntimeSettings,
+    TransferTask,
+};
 
 #[derive(Default, Clone)]
 pub struct AppState {
@@ -66,5 +73,24 @@ impl AppState {
             .write()
             .expect("messages write lock")
             .push(message);
+    }
+
+    pub fn update_delivery_status(
+        &self,
+        request_id: &str,
+        status: DeliveryStatus,
+        save_root: Option<String>,
+    ) {
+        let mut messages = self.messages.write().expect("messages write lock");
+        for message in messages.iter_mut() {
+            if let Some(delivery) = message.delivery.as_mut() {
+                if delivery.request_id == request_id {
+                    delivery.status = status.clone();
+                    if let Some(root) = save_root.as_ref() {
+                        delivery.save_root = Some(root.clone());
+                    }
+                }
+            }
+        }
     }
 }
