@@ -5,6 +5,7 @@ mod commands;
 mod runtime;
 
 use feiq_lan_tool_lib::app_state::AppState;
+use feiq_lan_tool_lib::settings_store::load_settings;
 use tauri::Manager;
 use runtime::{
     spawn_discovery_runtime,
@@ -21,6 +22,9 @@ fn main() {
         .setup(|app| {
             let app_handle = app.handle().clone();
             let state = app.state::<AppState>().inner().clone();
+            if let Ok(Some(settings)) = load_settings() {
+                state.update_runtime_settings(settings);
+            }
             spawn_message_listener(app_handle, state, DEFAULT_MESSAGE_PORT);
             spawn_file_listener(app.handle().clone(), app.state::<AppState>().inner().clone(), DEFAULT_FILE_PORT);
             spawn_discovery_runtime(app.handle().clone(), app.state::<AppState>().inner().clone());
@@ -30,6 +34,7 @@ fn main() {
             commands::list_devices,
             commands::list_transfers,
             commands::list_messages,
+            commands::get_settings,
             commands::sync_settings,
             commands::send_file_to_device,
             commands::send_direct_message,

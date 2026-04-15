@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 
@@ -28,6 +28,7 @@ vi.mock("../desktop/api", async () => {
     listDevices: vi.fn(),
     listMessages: vi.fn(),
     listTransfers: vi.fn(),
+    getRuntimeSettings: vi.fn(),
     syncRuntimeSettings: vi.fn(),
     sendFileToDevice: vi.fn(),
     sendDirectMessage: vi.fn(),
@@ -38,6 +39,7 @@ vi.mock("../desktop/api", async () => {
 const mockedListDevices = vi.mocked(desktopApi.listDevices);
 const mockedListMessages = vi.mocked(desktopApi.listMessages);
 const mockedListTransfers = vi.mocked(desktopApi.listTransfers);
+const mockedGetRuntimeSettings = vi.mocked(desktopApi.getRuntimeSettings);
 const mockedSyncRuntimeSettings = vi.mocked(desktopApi.syncRuntimeSettings);
 const mockedSendFileToDevice = vi.mocked(desktopApi.sendFileToDevice);
 const mockedSendDirectMessage = vi.mocked(desktopApi.sendDirectMessage);
@@ -55,10 +57,12 @@ beforeEach(() => {
       nickname: "未命名设备",
       downloadDir: "~/Downloads",
     },
+    settingsReady: true,
   });
   mockedListDevices.mockReset();
   mockedListMessages.mockReset();
   mockedListTransfers.mockReset();
+  mockedGetRuntimeSettings.mockReset();
   mockedSyncRuntimeSettings.mockReset();
   mockedSendFileToDevice.mockReset();
   mockedSendDirectMessage.mockReset();
@@ -69,6 +73,11 @@ beforeEach(() => {
   mockedListDevices.mockResolvedValue([]);
   mockedListMessages.mockResolvedValue([]);
   mockedListTransfers.mockResolvedValue([]);
+  mockedGetRuntimeSettings.mockResolvedValue({
+    deviceId: "local-device",
+    nickname: "未命名设备",
+    downloadDir: "~/Downloads",
+  });
   mockedSyncRuntimeSettings.mockResolvedValue();
   mockedSendFileToDevice.mockResolvedValue();
   mockedSendDirectMessage.mockResolvedValue();
@@ -87,6 +96,21 @@ test("renders settings panel", () => {
   render(<App />);
 
   expect(screen.getByText("本地设置")).toBeInTheDocument();
+});
+
+test("loads persisted settings from desktop api", async () => {
+  mockedGetRuntimeSettings.mockResolvedValue({
+    deviceId: "persisted-device",
+    nickname: "飞秋助手",
+    downloadDir: "D:/LAN/Downloads",
+  });
+
+  render(<App />);
+
+  await waitFor(() => {
+    expect(screen.getByDisplayValue("飞秋助手")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("D:/LAN/Downloads")).toBeInTheDocument();
+  });
 });
 
 test("loads devices and transfers from desktop api", async () => {
@@ -519,13 +543,10 @@ test("shows sent direct messages in the active session", async () => {
 });
 
 test("updates local nickname in shared settings state", async () => {
-  const user = userEvent.setup();
-
   render(<App />);
 
   const nicknameInput = screen.getByDisplayValue("未命名设备");
-  await user.clear(nicknameInput);
-  await user.type(nicknameInput, "局域网助手");
+  fireEvent.change(nicknameInput, { target: { value: "局域网助手" } });
 
   expect(useAppStore.getState().settings.nickname).toBe("局域网助手");
 });

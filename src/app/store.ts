@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import { listDevices, listMessages, listTransfers } from "../desktop/api";
+import { getRuntimeSettings, listDevices, listMessages, listTransfers } from "../desktop/api";
 import type { ChatMessage, KnownDevice, TransferTask } from "../desktop/types";
 
 type LocalSettings = {
@@ -14,6 +14,7 @@ type AppStore = {
   messages: ChatMessage[];
   selectedDeviceId: string | null;
   settings: LocalSettings;
+  settingsReady: boolean;
   transfers: TransferTask[];
   load: () => Promise<void>;
   setDevices: (devices: KnownDevice[]) => void;
@@ -32,17 +33,21 @@ export const useAppStore = create<AppStore>((set) => ({
     nickname: "未命名设备",
     downloadDir: "~/Downloads",
   },
+  settingsReady: false,
   transfers: [],
   async load() {
-    const [devices, messages, transfers] = await Promise.all([
+    const [devices, messages, transfers, settings] = await Promise.all([
       listDevices(),
       listMessages(),
       listTransfers(),
+      getRuntimeSettings(),
     ]);
 
     set((state) => ({
       devices,
       messages,
+      settings,
+      settingsReady: true,
       transfers,
       selectedDeviceId: resolveSelectedDeviceId(state.selectedDeviceId, devices),
     }));

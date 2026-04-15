@@ -14,6 +14,7 @@ use feiq_lan_tool_lib::models::{
     TransferStatus,
     TransferTask,
 };
+use feiq_lan_tool_lib::settings_store::save_settings;
 
 const TRANSFER_UPDATED_EVENT: &str = "transfer-updated";
 
@@ -33,10 +34,16 @@ pub async fn list_messages(state: State<'_, AppState>) -> Result<Vec<ChatMessage
 }
 
 #[tauri::command]
+pub async fn get_settings(state: State<'_, AppState>) -> Result<RuntimeSettings, String> {
+    Ok(state.runtime_settings())
+}
+
+#[tauri::command]
 pub async fn sync_settings(
     state: State<'_, AppState>,
     settings: RuntimeSettings,
 ) -> Result<(), String> {
+    save_settings(&settings).map_err(|err| err.to_string())?;
     state.update_runtime_settings(settings);
     Ok(())
 }

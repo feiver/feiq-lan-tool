@@ -20,6 +20,18 @@ export function listMessages(): Promise<ChatMessage[]> {
   return invoke("list_messages");
 }
 
+export function getRuntimeSettings(): Promise<RuntimeSettingsPayload> {
+  return invoke<{
+    device_id: string;
+    nickname: string;
+    download_dir: string;
+  }>("get_settings").then((settings) => ({
+    deviceId: settings.device_id,
+    nickname: settings.nickname,
+    downloadDir: settings.download_dir,
+  }));
+}
+
 export function syncRuntimeSettings(settings: RuntimeSettingsPayload): Promise<void> {
   return invoke("sync_settings", {
     settings: {

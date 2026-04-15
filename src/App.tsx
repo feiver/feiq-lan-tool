@@ -20,6 +20,7 @@ function App() {
   const messages = useAppStore((state) => state.messages);
   const selectedDeviceId = useAppStore((state) => state.selectedDeviceId);
   const settings = useAppStore((state) => state.settings);
+  const settingsReady = useAppStore((state) => state.settingsReady);
   const transfers = useAppStore((state) => state.transfers);
   const load = useAppStore((state) => state.load);
   const setDevices = useAppStore((state) => state.setDevices);
@@ -37,8 +38,12 @@ function App() {
   }, [load]);
 
   useEffect(() => {
+    if (!settingsReady) {
+      return;
+    }
+
     void syncRuntimeSettings(settings);
-  }, [settings]);
+  }, [settings, settingsReady]);
 
   useEffect(() => {
     let unlisten: (() => void) | null = null;
