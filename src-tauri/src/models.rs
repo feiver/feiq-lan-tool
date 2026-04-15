@@ -31,6 +31,15 @@ pub struct MessagePayload {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChatMessage {
+    pub message_id: String,
+    pub to_device_id: String,
+    pub content: String,
+    pub sent_at_ms: i64,
+    pub kind: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TransferStatus {
     Pending,
     InProgress,

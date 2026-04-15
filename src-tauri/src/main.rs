@@ -12,6 +12,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             commands::list_devices,
             commands::list_transfers,
+            commands::list_messages,
             commands::send_direct_message,
             commands::send_broadcast_message
         ])

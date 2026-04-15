@@ -14,6 +14,7 @@ vi.mock("../desktop/api", async () => {
   return {
     ...actual,
     listDevices: vi.fn(),
+    listMessages: vi.fn(),
     listTransfers: vi.fn(),
     sendDirectMessage: vi.fn(),
     sendBroadcastMessage: vi.fn(),
@@ -21,6 +22,7 @@ vi.mock("../desktop/api", async () => {
 });
 
 const mockedListDevices = vi.mocked(desktopApi.listDevices);
+const mockedListMessages = vi.mocked(desktopApi.listMessages);
 const mockedListTransfers = vi.mocked(desktopApi.listTransfers);
 const mockedSendDirectMessage = vi.mocked(desktopApi.sendDirectMessage);
 const mockedSendBroadcastMessage = vi.mocked(desktopApi.sendBroadcastMessage);
@@ -28,14 +30,17 @@ const mockedSendBroadcastMessage = vi.mocked(desktopApi.sendBroadcastMessage);
 beforeEach(() => {
   useAppStore.setState({
     devices: [],
+    messages: [],
     transfers: [],
     selectedDeviceId: null,
   });
   mockedListDevices.mockReset();
+  mockedListMessages.mockReset();
   mockedListTransfers.mockReset();
   mockedSendDirectMessage.mockReset();
   mockedSendBroadcastMessage.mockReset();
   mockedListDevices.mockResolvedValue([]);
+  mockedListMessages.mockResolvedValue([]);
   mockedListTransfers.mockResolvedValue([]);
   mockedSendDirectMessage.mockResolvedValue();
   mockedSendBroadcastMessage.mockResolvedValue();
@@ -83,6 +88,35 @@ test("loads devices and transfers from desktop api", async () => {
   await waitFor(() => {
     expect(screen.getByText("Alice")).toBeInTheDocument();
     expect(screen.getByText("demo.txt")).toBeInTheDocument();
+  });
+});
+
+test("loads existing session messages from desktop api", async () => {
+  mockedListDevices.mockResolvedValue([
+    {
+      device_id: "device-a",
+      nickname: "Alice",
+      host_name: "alice-pc",
+      ip_addr: "192.168.1.10",
+      message_port: 37001,
+      file_port: 37002,
+      last_seen_ms: 1000,
+    },
+  ]);
+  mockedListMessages.mockResolvedValue([
+    {
+      message_id: "msg-history-1",
+      to_device_id: "device-a",
+      content: "历史消息",
+      sent_at_ms: 1001,
+      kind: "direct",
+    },
+  ]);
+
+  render(<App />);
+
+  await waitFor(() => {
+    expect(screen.getByText("历史消息")).toBeInTheDocument();
   });
 });
 

@@ -1,11 +1,12 @@
 use feiq_lan_tool_lib::app_state::AppState;
-use feiq_lan_tool_lib::models::{DeviceAnnouncement, TransferStatus, TransferTask};
+use feiq_lan_tool_lib::models::{ChatMessage, DeviceAnnouncement, TransferStatus, TransferTask};
 
 #[test]
 fn state_helpers_return_empty_lists_by_default() {
     let state = AppState::default();
 
     assert!(state.list_devices().is_empty());
+    assert!(state.list_messages().is_empty());
     assert!(state.list_transfers().is_empty());
 }
 
@@ -35,12 +36,22 @@ fn state_helpers_return_devices_and_transfers() {
             to_device_id: "device-b".into(),
             status: TransferStatus::InProgress,
         });
+    state.push_message(ChatMessage {
+        message_id: "msg-1".into(),
+        to_device_id: "device-a".into(),
+        content: "hello".into(),
+        sent_at_ms: 1002,
+        kind: "direct".into(),
+    });
 
     let devices = state.list_devices();
+    let messages = state.list_messages();
     let transfers = state.list_transfers();
 
     assert_eq!(devices.len(), 1);
     assert_eq!(devices[0].device_id, "device-a");
+    assert_eq!(messages.len(), 1);
+    assert_eq!(messages[0].content, "hello");
     assert_eq!(transfers.len(), 1);
     assert_eq!(transfers[0].transfer_id, "tx-1");
 }

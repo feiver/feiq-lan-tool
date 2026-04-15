@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 
-import type { KnownDevice, MessagePayload, TransferTask } from "./types";
+import type { ChatMessage, KnownDevice, MessagePayload, TransferTask } from "./types";
 
 export function listDevices(): Promise<KnownDevice[]> {
   return invoke("list_devices");
@@ -8,6 +8,10 @@ export function listDevices(): Promise<KnownDevice[]> {
 
 export function listTransfers(): Promise<TransferTask[]> {
   return invoke("list_transfers");
+}
+
+export function listMessages(): Promise<ChatMessage[]> {
+  return invoke("list_messages");
 }
 
 export function sendDirectMessage(
