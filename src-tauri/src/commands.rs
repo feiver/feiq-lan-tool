@@ -404,3 +404,69 @@ fn normalize_relative_path(relative_path: &str, group_name: Option<&str>) -> Str
 
     normalized
 }
+
+#[cfg(test)]
+mod tests {
+    use super::classify_delivery_paths;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::pin::pin;
+    use std::sync::Arc;
+    use std::task::{Context, Poll, Wake, Waker};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    struct NoopWake;
+
+    impl Wake for NoopWake {
+        fn wake(self: Arc<Self>) {}
+    }
+
+    #[test]
+    fn classify_delivery_paths_distinguishes_directory_and_extensionless_file() {
+        let temp_root = temp_path("delivery-classify");
+        let directory_path = temp_root.join("项目资料");
+        let file_path = temp_root.join("LICENSE");
+
+        fs::create_dir_all(&directory_path).expect("create directory");
+        fs::write(&file_path, b"plain text").expect("write file");
+
+        let items = block_on_ready(classify_delivery_paths(vec![
+            directory_path.to_string_lossy().into_owned(),
+            file_path.to_string_lossy().into_owned(),
+        ]))
+        .expect("classify paths");
+
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[0].kind, "directory");
+        assert_eq!(items[0].group_name.as_deref(), Some("项目资料"));
+        assert_eq!(items[1].kind, "file");
+        assert_eq!(items[1].display_name, "LICENSE");
+
+        fs::remove_file(file_path).expect("remove file");
+        fs::remove_dir_all(temp_root).expect("remove temp root");
+    }
+
+    fn temp_path(prefix: &str) -> PathBuf {
+        let mut path = std::env::temp_dir();
+        let suffix = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time")
+            .as_nanos();
+        path.push(format!("{prefix}-{suffix}"));
+        path
+    }
+
+    fn block_on_ready<F>(future: F) -> F::Output
+    where
+        F: std::future::Future,
+    {
+        let waker = Waker::from(Arc::new(NoopWake));
+        let mut context = Context::from_waker(&waker);
+        let mut future = pin!(future);
+
+        match future.as_mut().poll(&mut context) {
+            Poll::Ready(value) => value,
+            Poll::Pending => panic!("future unexpectedly pending"),
+        }
+    }
+}
