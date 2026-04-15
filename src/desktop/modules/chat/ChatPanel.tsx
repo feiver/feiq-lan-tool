@@ -1,8 +1,26 @@
+import type { ChatMessage } from "../../types";
+
 type ChatPanelProps = {
   activeDeviceName: string | null;
+  messages: ChatMessage[];
+  draftMessage: string;
+  onDraftChange: (value: string) => void;
+  onSendDirect: () => void;
+  onSendBroadcast: () => void;
+  canSendDirect: boolean;
+  canSendBroadcast: boolean;
 };
 
-export function ChatPanel({ activeDeviceName }: ChatPanelProps) {
+export function ChatPanel({
+  activeDeviceName,
+  messages,
+  draftMessage,
+  onDraftChange,
+  onSendDirect,
+  onSendBroadcast,
+  canSendDirect,
+  canSendBroadcast,
+}: ChatPanelProps) {
   return (
     <section className="panel panel-chat">
       <div className="panel-header">
@@ -21,6 +39,30 @@ export function ChatPanel({ activeDeviceName }: ChatPanelProps) {
             <p>消息流、单聊输入和广播动作会在下一步接入。</p>
           </>
         )}
+      </div>
+      {messages.length > 0 ? (
+        <div className="chat-log">
+          {messages.map((message) => (
+            <div key={message.message_id} className="chat-bubble">
+              {message.content}
+            </div>
+          ))}
+        </div>
+      ) : null}
+      <textarea
+        className="chat-input"
+        placeholder="输入消息内容"
+        rows={5}
+        value={draftMessage}
+        onChange={(event) => onDraftChange(event.currentTarget.value)}
+      />
+      <div className="chat-actions">
+        <button type="button" onClick={onSendDirect} disabled={!canSendDirect}>
+          发送单聊
+        </button>
+        <button type="button" onClick={onSendBroadcast} disabled={!canSendBroadcast}>
+          发送广播
+        </button>
       </div>
     </section>
   );

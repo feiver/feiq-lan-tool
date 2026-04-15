@@ -16,3 +16,19 @@ export type TransferTask = {
   to_device_id: string;
   status: "Pending" | "InProgress" | "Completed" | "Failed" | "Cancelled";
 };
+
+export type MessagePayload = {
+  message_id: string;
+  from_device_id: string;
+  to_device_id: string;
+  content: string;
+  sent_at_ms: number;
+};
+
+export type ChatMessage = {
+  message_id: string;
+  to_device_id: string;
+  content: string;
+  sent_at_ms: number;
+  kind: "direct" | "broadcast";
+};

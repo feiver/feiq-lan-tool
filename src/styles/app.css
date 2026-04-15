@@ -134,6 +134,54 @@ body {
   margin: 0;
 }
 
+.chat-input {
+  width: 100%;
+  margin-top: 16px;
+  border: 1px solid rgba(100, 135, 190, 0.28);
+  border-radius: 18px;
+  padding: 14px 16px;
+  resize: vertical;
+  background: rgba(244, 248, 255, 0.92);
+  color: #14213d;
+  font: inherit;
+}
+
+.chat-log {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.chat-bubble {
+  width: fit-content;
+  max-width: 85%;
+  padding: 12px 14px;
+  border-radius: 16px 16px 4px 16px;
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  color: #0f172a;
+}
+
+.chat-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.chat-actions button {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  background: #1d4ed8;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+}
+
+.chat-actions button[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .transfer-list {
   margin: 0;
   padding: 0;

@@ -11,7 +11,9 @@ fn main() {
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
             commands::list_devices,
-            commands::list_transfers
+            commands::list_transfers,
+            commands::send_direct_message,
+            commands::send_broadcast_message
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
