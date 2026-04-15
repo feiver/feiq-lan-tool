@@ -1,10 +1,12 @@
 use std::env;
 use std::net::{TcpListener, UdpSocket};
+use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use feiq_lan_tool_lib::app_state::AppState;
-use feiq_lan_tool_lib::models::{DeviceAnnouncement, LanEvent};
+use feiq_lan_tool_lib::file_transfer::receive_file;
+use feiq_lan_tool_lib::models::{DeviceAnnouncement, LanEvent, TransferStatus, TransferTask};
 use feiq_lan_tool_lib::message_runtime::{record_incoming_message, CHAT_MESSAGE_RECEIVED_EVENT};
 use feiq_lan_tool_lib::message_server::read_event;
 use feiq_lan_tool_lib::protocol::{decode_event, encode_event};
@@ -14,6 +16,7 @@ pub const DEFAULT_MESSAGE_PORT: u16 = 37001;
 pub const DEFAULT_FILE_PORT: u16 = 37002;
 pub const DEFAULT_DISCOVERY_PORT: u16 = 37000;
 pub const DEVICES_UPDATED_EVENT: &str = "devices-updated";
+pub const TRANSFER_UPDATED_EVENT: &str = "transfer-updated";
 const DISCOVERY_INTERVAL: Duration = Duration::from_secs(3);
 const DISCOVERY_READ_TIMEOUT: Duration = Duration::from_secs(1);
 const DEVICE_TTL_MS: i64 = 15_000;
@@ -56,6 +59,59 @@ pub fn spawn_discovery_runtime(app_handle: AppHandle, state: AppState) {
 
     spawn_discovery_listener(app_handle.clone(), state.clone(), announcement.device_id.clone());
     spawn_discovery_announcer(announcement);
+}
+
+pub fn spawn_file_listener(app_handle: AppHandle, state: AppState, port: u16) {
+    thread::spawn(move || {
+        let listener = match TcpListener::bind(("0.0.0.0", port)) {
+            Ok(listener) => listener,
+            Err(err) => {
+                eprintln!("failed to bind file listener on port {port}: {err}");
+                return;
+            }
+        };
+
+        for stream in listener.incoming() {
+            let mut stream = match stream {
+                Ok(stream) => stream,
+                Err(err) => {
+                    eprintln!("failed to accept incoming file: {err}");
+                    continue;
+                }
+            };
+            let peer_addr = stream
+                .peer_addr()
+                .map(|addr| addr.ip().to_string())
+                .unwrap_or_else(|_| "unknown-device".into());
+            let settings = state.runtime_settings();
+            let transfer_id = format!("tx-{}", current_time_ms());
+            let file_name = format!("incoming-{transfer_id}.bin");
+            let output_path = build_download_path(&settings.download_dir, &file_name);
+            let mut task = TransferTask {
+                transfer_id: transfer_id.clone(),
+                file_name,
+                file_size: 0,
+                transferred_bytes: 0,
+                from_device_id: peer_addr,
+                to_device_id: settings.device_id,
+                status: TransferStatus::Pending,
+            };
+
+            state.upsert_transfer(task.clone());
+            let _ = app_handle.emit(TRANSFER_UPDATED_EVENT, &task);
+
+            let receive_result = receive_file(&mut stream, &output_path, &mut task, |snapshot| {
+                state.upsert_transfer(snapshot.clone());
+                let _ = app_handle.emit(TRANSFER_UPDATED_EVENT, snapshot);
+            });
+
+            if receive_result.is_err() {
+                task.status = TransferStatus::Failed;
+                state.upsert_transfer(task.clone());
+                let _ = app_handle.emit(TRANSFER_UPDATED_EVENT, &task);
+            }
+        }
+    });
 }
 
 fn spawn_discovery_listener(app_handle: AppHandle, state: AppState, local_device_id: String) {
@@ -167,6 +223,34 @@ fn detect_local_ip() -> Option<String> {
     let socket = UdpSocket::bind(("0.0.0.0", 0)).ok()?;
     socket.connect(("8.8.8.8", 80)).ok()?;
     Some(socket.local_addr().ok()?.ip().to_string())
+}
+
+fn build_download_path(download_dir: &str, file_name: &str) -> PathBuf {
+    resolve_download_dir(download_dir).join(file_name)
+}
+
+fn resolve_download_dir(download_dir: &str) -> PathBuf {
+    if let Some(stripped) = download_dir.strip_prefix("~/") {
+        return home_dir().join(stripped);
+    }
+
+    if let Some(stripped) = download_dir.strip_prefix("~\\") {
+        return home_dir().join(stripped);
+    }
+
+    let path = Path::new(download_dir);
+    if path.as_os_str().is_empty() {
+        return home_dir().join("Downloads");
+    }
+
+    path.to_path_buf()
+}
+
+fn home_dir() -> PathBuf {
+    env::var("USERPROFILE")
+        .or_else(|_| env::var("HOME"))
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("."))
 }
 
 fn current_time_ms() -> i64 {

@@ -70,6 +70,23 @@ pub struct FileOffer {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RuntimeSettings {
+    pub device_id: String,
+    pub nickname: String,
+    pub download_dir: String,
+}
+
+impl Default for RuntimeSettings {
+    fn default() -> Self {
+        Self {
+            device_id: "local-device".into(),
+            nickname: "未命名设备".into(),
+            download_dir: "~/Downloads".into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "payload")]
 pub enum LanEvent {
     DeviceAnnouncement(DeviceAnnouncement),

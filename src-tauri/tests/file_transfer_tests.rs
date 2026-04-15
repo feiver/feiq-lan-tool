@@ -1,4 +1,5 @@
 use std::fs;
+use std::io::Cursor;
 use std::io::Read;
 use std::net::TcpListener;
 use std::path::PathBuf;
@@ -8,7 +9,7 @@ use std::task::{Context, Poll, Wake, Waker};
 use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use feiq_lan_tool_lib::file_transfer::{mark_transfer_status, send_file};
+use feiq_lan_tool_lib::file_transfer::{mark_transfer_status, receive_file, send_file};
 use feiq_lan_tool_lib::models::{TransferStatus, TransferTask};
 
 struct NoopWake;
@@ -79,6 +80,39 @@ fn send_file_streams_bytes_to_tcp_peer() {
 
     assert_eq!(sent, content.len() as u64);
     assert_eq!(received, content);
+
+    fs::remove_file(path).expect("cleanup temp file");
+}
+
+#[test]
+fn receive_file_writes_bytes_and_updates_transfer_snapshots() {
+    let path = temp_file_path();
+    let content = b"incoming file transfer".to_vec();
+    let mut reader = Cursor::new(content.clone());
+    let mut task = TransferTask {
+        transfer_id: "tx-recv-1".into(),
+        file_name: "incoming.bin".into(),
+        file_size: content.len() as u64,
+        transferred_bytes: 0,
+        from_device_id: "device-a".into(),
+        to_device_id: "local-device".into(),
+        status: TransferStatus::Pending,
+    };
+    let mut snapshots = Vec::new();
+
+    let received = receive_file(&mut reader, &path, &mut task, |snapshot| {
+        snapshots.push(snapshot.clone());
+    })
+    .expect("receive file");
+
+    let written = fs::read(&path).expect("read received file");
+
+    assert_eq!(received, content.len() as u64);
+    assert_eq!(written, content);
+    assert_eq!(task.transferred_bytes, content.len() as u64);
+    assert_eq!(task.status, TransferStatus::Completed);
+    assert!(!snapshots.is_empty());
+    assert_eq!(snapshots.last().expect("last snapshot").status, TransferStatus::Completed);
 
     fs::remove_file(path).expect("cleanup temp file");
 }

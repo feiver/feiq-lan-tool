@@ -28,6 +28,7 @@ vi.mock("../desktop/api", async () => {
     listDevices: vi.fn(),
     listMessages: vi.fn(),
     listTransfers: vi.fn(),
+    syncRuntimeSettings: vi.fn(),
     sendDirectMessage: vi.fn(),
     sendBroadcastMessage: vi.fn(),
   };
@@ -36,6 +37,7 @@ vi.mock("../desktop/api", async () => {
 const mockedListDevices = vi.mocked(desktopApi.listDevices);
 const mockedListMessages = vi.mocked(desktopApi.listMessages);
 const mockedListTransfers = vi.mocked(desktopApi.listTransfers);
+const mockedSyncRuntimeSettings = vi.mocked(desktopApi.syncRuntimeSettings);
 const mockedSendDirectMessage = vi.mocked(desktopApi.sendDirectMessage);
 const mockedSendBroadcastMessage = vi.mocked(desktopApi.sendBroadcastMessage);
 const mockedListen = vi.mocked(eventApi.listen);
@@ -55,6 +57,7 @@ beforeEach(() => {
   mockedListDevices.mockReset();
   mockedListMessages.mockReset();
   mockedListTransfers.mockReset();
+  mockedSyncRuntimeSettings.mockReset();
   mockedSendDirectMessage.mockReset();
   mockedSendBroadcastMessage.mockReset();
   mockedListen.mockClear();
@@ -63,6 +66,7 @@ beforeEach(() => {
   mockedListDevices.mockResolvedValue([]);
   mockedListMessages.mockResolvedValue([]);
   mockedListTransfers.mockResolvedValue([]);
+  mockedSyncRuntimeSettings.mockResolvedValue();
   mockedSendDirectMessage.mockResolvedValue();
   mockedSendBroadcastMessage.mockResolvedValue();
 });
@@ -256,6 +260,63 @@ test("updates contacts when discovery event arrives", async () => {
 
   await waitFor(() => {
     expect(screen.getByText("Carol")).toBeInTheDocument();
+  });
+});
+
+test("shows transfer task when transfer event arrives", async () => {
+  render(<App />);
+
+  await waitFor(() => {
+    expect(screen.getByText("传输任务")).toBeInTheDocument();
+  });
+
+  const transferListener = eventListeners.get("transfer-updated");
+  expect(transferListener).toBeDefined();
+
+  transferListener?.({
+    payload: {
+      transfer_id: "tx-runtime-1",
+      file_name: "incoming.bin",
+      file_size: 100,
+      transferred_bytes: 40,
+      from_device_id: "device-a",
+      to_device_id: "local-device",
+      status: "InProgress",
+    },
+  });
+
+  await waitFor(() => {
+    expect(screen.getByText("incoming.bin")).toBeInTheDocument();
+    expect(screen.getByText("40%")).toBeInTheDocument();
+    expect(screen.getByText("InProgress")).toBeInTheDocument();
+  });
+});
+
+test("shows transferred bytes when total file size is unknown", async () => {
+  render(<App />);
+
+  await waitFor(() => {
+    expect(screen.getByText("传输任务")).toBeInTheDocument();
+  });
+
+  const transferListener = eventListeners.get("transfer-updated");
+  expect(transferListener).toBeDefined();
+
+  transferListener?.({
+    payload: {
+      transfer_id: "tx-runtime-2",
+      file_name: "unknown-size.bin",
+      file_size: 0,
+      transferred_bytes: 40,
+      from_device_id: "device-a",
+      to_device_id: "local-device",
+      status: "InProgress",
+    },
+  });
+
+  await waitFor(() => {
+    expect(screen.getByText("unknown-size.bin")).toBeInTheDocument();
+    expect(screen.getByText("40 B")).toBeInTheDocument();
   });
 });
 

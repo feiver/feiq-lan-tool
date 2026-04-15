@@ -24,6 +24,41 @@ pub async fn send_file(addr: &str, file_path: &Path) -> io::Result<u64> {
     Ok(sent)
 }
 
+pub fn receive_file(
+    reader: &mut impl Read,
+    file_path: &Path,
+    task: &mut TransferTask,
+    mut on_progress: impl FnMut(&TransferTask),
+) -> io::Result<u64> {
+    if let Some(parent) = file_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+
+    let mut file = File::create(file_path)?;
+    let mut buffer = [0_u8; 8192];
+    let mut received = 0_u64;
+
+    task.status = TransferStatus::InProgress;
+    on_progress(task);
+
+    loop {
+        let bytes_read = reader.read(&mut buffer)?;
+        if bytes_read == 0 {
+            break;
+        }
+
+        file.write_all(&buffer[..bytes_read])?;
+        received += bytes_read as u64;
+        task.transferred_bytes = received;
+        on_progress(task);
+    }
+
+    task.status = TransferStatus::Completed;
+    on_progress(task);
+
+    Ok(received)
+}
+
 pub fn mark_transfer_status(task: &mut TransferTask, status: TransferStatus) {
     task.status = status;
 }

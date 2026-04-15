@@ -6,7 +6,13 @@ mod runtime;
 
 use feiq_lan_tool_lib::app_state::AppState;
 use tauri::Manager;
-use runtime::{spawn_discovery_runtime, spawn_message_listener, DEFAULT_MESSAGE_PORT};
+use runtime::{
+    spawn_discovery_runtime,
+    spawn_file_listener,
+    spawn_message_listener,
+    DEFAULT_FILE_PORT,
+    DEFAULT_MESSAGE_PORT,
+};
 
 fn main() {
     tauri::Builder::default()
@@ -16,6 +22,7 @@ fn main() {
             let app_handle = app.handle().clone();
             let state = app.state::<AppState>().inner().clone();
             spawn_message_listener(app_handle, state, DEFAULT_MESSAGE_PORT);
+            spawn_file_listener(app.handle().clone(), app.state::<AppState>().inner().clone(), DEFAULT_FILE_PORT);
             spawn_discovery_runtime(app.handle().clone(), app.state::<AppState>().inner().clone());
             Ok(())
         })
@@ -23,6 +30,7 @@ fn main() {
             commands::list_devices,
             commands::list_transfers,
             commands::list_messages,
+            commands::sync_settings,
             commands::send_direct_message,
             commands::send_broadcast_message
         ])

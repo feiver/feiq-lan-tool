@@ -5,12 +5,13 @@ import { useAppStore } from "./app/store";
 import {
   sendBroadcastMessage,
   sendDirectMessage,
+  syncRuntimeSettings,
 } from "./desktop/api";
 import { ChatPanel } from "./desktop/modules/chat/ChatPanel";
 import { ContactsPanel } from "./desktop/modules/contacts/ContactsPanel";
 import { SettingsPanel } from "./desktop/modules/settings/SettingsPanel";
 import { TransfersPanel } from "./desktop/modules/transfers/TransfersPanel";
-import type { ChatMessage, KnownDevice, MessagePayload } from "./desktop/types";
+import type { ChatMessage, KnownDevice, MessagePayload, TransferTask } from "./desktop/types";
 import "./styles/app.css";
 
 function App() {
@@ -21,6 +22,7 @@ function App() {
   const transfers = useAppStore((state) => state.transfers);
   const load = useAppStore((state) => state.load);
   const setDevices = useAppStore((state) => state.setDevices);
+  const upsertTransfer = useAppStore((state) => state.upsertTransfer);
   const selectDevice = useAppStore((state) => state.selectDevice);
   const addMessage = useAppStore((state) => state.addMessage);
   const updateSettings = useAppStore((state) => state.updateSettings);
@@ -31,6 +33,10 @@ function App() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    void syncRuntimeSettings(settings);
+  }, [settings]);
 
   useEffect(() => {
     let unlisten: (() => void) | null = null;
@@ -73,6 +79,27 @@ function App() {
       unlisten?.();
     };
   }, [setDevices]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    let disposed = false;
+
+    void listen<TransferTask>("transfer-updated", (event) => {
+      upsertTransfer(event.payload);
+    }).then((cleanup) => {
+      if (disposed) {
+        cleanup();
+        return;
+      }
+
+      unlisten = cleanup;
+    });
+
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [upsertTransfer]);
 
   function createPayload(toDeviceId: string, content: string): MessagePayload {
     return {

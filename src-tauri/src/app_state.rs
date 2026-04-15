@@ -1,12 +1,13 @@
 use std::sync::{Arc, RwLock};
 
 use crate::discovery::DeviceRegistry;
-use crate::models::{ChatMessage, DeviceAnnouncement, KnownDevice, TransferTask};
+use crate::models::{ChatMessage, DeviceAnnouncement, KnownDevice, RuntimeSettings, TransferTask};
 
 #[derive(Default, Clone)]
 pub struct AppState {
     pub registry: Arc<RwLock<DeviceRegistry>>,
     pub messages: Arc<RwLock<Vec<ChatMessage>>>,
+    pub settings: Arc<RwLock<RuntimeSettings>>,
     pub transfers: Arc<RwLock<Vec<TransferTask>>>,
 }
 
@@ -32,6 +33,28 @@ impl AppState {
 
     pub fn list_transfers(&self) -> Vec<TransferTask> {
         self.transfers.read().expect("transfers read lock").clone()
+    }
+
+    pub fn upsert_transfer(&self, task: TransferTask) -> Vec<TransferTask> {
+        let mut transfers = self.transfers.write().expect("transfers write lock");
+        if let Some(index) = transfers
+            .iter()
+            .position(|item| item.transfer_id == task.transfer_id)
+        {
+            transfers[index] = task;
+        } else {
+            transfers.push(task);
+        }
+
+        transfers.clone()
+    }
+
+    pub fn runtime_settings(&self) -> RuntimeSettings {
+        self.settings.read().expect("settings read lock").clone()
+    }
+
+    pub fn update_runtime_settings(&self, settings: RuntimeSettings) {
+        *self.settings.write().expect("settings write lock") = settings;
     }
 
     pub fn list_messages(&self) -> Vec<ChatMessage> {

@@ -17,6 +17,7 @@ type AppStore = {
   transfers: TransferTask[];
   load: () => Promise<void>;
   setDevices: (devices: KnownDevice[]) => void;
+  upsertTransfer: (task: TransferTask) => void;
   selectDevice: (deviceId: string) => void;
   addMessage: (message: ChatMessage) => void;
   updateSettings: (patch: Partial<LocalSettings>) => void;
@@ -52,6 +53,11 @@ export const useAppStore = create<AppStore>((set) => ({
       selectedDeviceId: resolveSelectedDeviceId(state.selectedDeviceId, devices),
     }));
   },
+  upsertTransfer(task) {
+    set((state) => ({
+      transfers: upsertTransferTask(state.transfers, task),
+    }));
+  },
   selectDevice(deviceId) {
     set({ selectedDeviceId: deviceId });
   },
@@ -75,4 +81,15 @@ function resolveSelectedDeviceId(
   return selectedDeviceId && devices.some((device) => device.device_id === selectedDeviceId)
     ? selectedDeviceId
     : devices[0]?.device_id ?? null;
+}
+
+function upsertTransferTask(tasks: TransferTask[], task: TransferTask): TransferTask[] {
+  const index = tasks.findIndex((item) => item.transfer_id === task.transfer_id);
+  if (index === -1) {
+    return [...tasks, task];
+  }
+
+  const next = [...tasks];
+  next[index] = task;
+  return next;
 }

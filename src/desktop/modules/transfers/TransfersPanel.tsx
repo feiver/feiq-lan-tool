@@ -7,7 +7,7 @@ type TransfersPanelProps = {
 export function TransfersPanel({ transfers }: TransfersPanelProps) {
   function formatProgress(task: TransferTask): string {
     if (task.file_size <= 0) {
-      return "0%";
+      return `${task.transferred_bytes} B`;
     }
 
     return `${Math.round((task.transferred_bytes / task.file_size) * 100)}%`;
