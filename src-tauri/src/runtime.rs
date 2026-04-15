@@ -5,7 +5,7 @@ use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use feiq_lan_tool_lib::app_state::AppState;
-use feiq_lan_tool_lib::file_transfer::receive_file;
+use feiq_lan_tool_lib::file_transfer::{read_file_offer, receive_file};
 use feiq_lan_tool_lib::models::{DeviceAnnouncement, LanEvent, TransferStatus, TransferTask};
 use feiq_lan_tool_lib::message_runtime::{record_incoming_message, CHAT_MESSAGE_RECEIVED_EVENT};
 use feiq_lan_tool_lib::message_server::read_event;
@@ -79,21 +79,22 @@ pub fn spawn_file_listener(app_handle: AppHandle, state: AppState, port: u16) {
                     continue;
                 }
             };
-            let peer_addr = stream
-                .peer_addr()
-                .map(|addr| addr.ip().to_string())
-                .unwrap_or_else(|_| "unknown-device".into());
             let settings = state.runtime_settings();
-            let transfer_id = format!("tx-{}", current_time_ms());
-            let file_name = format!("incoming-{transfer_id}.bin");
-            let output_path = build_download_path(&settings.download_dir, &file_name);
+            let offer = match read_file_offer(&mut stream) {
+                Ok(offer) => offer,
+                Err(err) => {
+                    eprintln!("failed to read file offer: {err}");
+                    continue;
+                }
+            };
+            let output_path = build_download_path(&settings.download_dir, &offer.file_name);
             let mut task = TransferTask {
-                transfer_id: transfer_id.clone(),
-                file_name,
-                file_size: 0,
+                transfer_id: offer.transfer_id,
+                file_name: offer.file_name,
+                file_size: offer.file_size,
                 transferred_bytes: 0,
-                from_device_id: peer_addr,
-                to_device_id: settings.device_id,
+                from_device_id: offer.from_device_id,
+                to_device_id: offer.to_device_id,
                 status: TransferStatus::Pending,
             };
 

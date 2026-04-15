@@ -3,7 +3,7 @@ use std::io::{self, Read, Write};
 use std::net::TcpStream;
 use std::path::Path;
 
-use crate::models::{TransferStatus, TransferTask};
+use crate::models::{FileOffer, TransferStatus, TransferTask};
 
 pub async fn send_file(addr: &str, file_path: &Path) -> io::Result<u64> {
     send_file_with_progress(addr, file_path, &mut empty_transfer_task(), |_| {}).await
@@ -38,6 +38,31 @@ pub async fn send_file_with_progress(
     task.status = TransferStatus::Completed;
     on_progress(task);
 
+    Ok(sent)
+}
+
+pub async fn send_file_with_offer(addr: &str, file_path: &Path, offer: &FileOffer) -> io::Result<u64> {
+    send_file_with_offer_and_progress(addr, file_path, offer, &mut empty_transfer_task(), |_| {}).await
+}
+
+pub async fn send_file_with_offer_and_progress(
+    addr: &str,
+    file_path: &Path,
+    offer: &FileOffer,
+    task: &mut TransferTask,
+    mut on_progress: impl FnMut(&TransferTask),
+) -> io::Result<u64> {
+    let mut file = File::open(file_path)?;
+    let mut stream = TcpStream::connect(addr)?;
+    write_file_offer(&mut stream, offer)?;
+    task.status = TransferStatus::InProgress;
+    on_progress(task);
+    let sent = copy_bytes(&mut file, &mut stream, Some(&mut |transferred| {
+        task.transferred_bytes = transferred;
+        on_progress(task);
+    }))?;
+    task.status = TransferStatus::Completed;
+    on_progress(task);
     Ok(sent)
 }
 
@@ -76,6 +101,17 @@ pub fn receive_file(
     Ok(received)
 }
 
+pub fn read_file_offer(reader: &mut impl Read) -> io::Result<FileOffer> {
+    let mut len_bytes = [0_u8; 8];
+    reader.read_exact(&mut len_bytes)?;
+    let len = u64::from_be_bytes(len_bytes) as usize;
+    let mut payload = vec![0_u8; len];
+    reader.read_exact(&mut payload)?;
+
+    serde_json::from_slice(&payload)
+        .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))
+}
+
 pub fn mark_transfer_status(task: &mut TransferTask, status: TransferStatus) {
     task.status = status;
 }
@@ -90,4 +126,36 @@ fn empty_transfer_task() -> TransferTask {
         to_device_id: String::new(),
         status: TransferStatus::Pending,
     }
+}
+
+fn write_file_offer(writer: &mut impl Write, offer: &FileOffer) -> io::Result<()> {
+    let payload = serde_json::to_vec(offer)
+        .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
+    writer.write_all(&(payload.len() as u64).to_be_bytes())?;
+    writer.write_all(&payload)?;
+    Ok(())
+}
+
+fn copy_bytes(
+    reader: &mut impl Read,
+    writer: &mut impl Write,
+    mut on_chunk: Option<&mut dyn FnMut(u64)>,
+) -> io::Result<u64> {
+    let mut buffer = [0_u8; 8192];
+    let mut transferred = 0_u64;
+
+    loop {
+        let bytes_read = reader.read(&mut buffer)?;
+        if bytes_read == 0 {
+            break;
+        }
+
+        writer.write_all(&buffer[..bytes_read])?;
+        transferred += bytes_read as u64;
+        if let Some(callback) = on_chunk.as_deref_mut() {
+            callback(transferred);
+        }
+    }
+
+    Ok(transferred)
 }

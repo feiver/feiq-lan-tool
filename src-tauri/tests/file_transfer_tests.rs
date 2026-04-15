@@ -10,12 +10,14 @@ use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use feiq_lan_tool_lib::file_transfer::{
+    read_file_offer,
     mark_transfer_status,
     receive_file,
     send_file,
     send_file_with_progress,
+    send_file_with_offer,
 };
-use feiq_lan_tool_lib::models::{TransferStatus, TransferTask};
+use feiq_lan_tool_lib::models::{FileOffer, TransferStatus, TransferTask};
 
 struct NoopWake;
 
@@ -163,6 +165,41 @@ fn send_file_with_progress_updates_transfer_snapshots() {
     assert_eq!(task.status, TransferStatus::Completed);
     assert!(!snapshots.is_empty());
     assert_eq!(snapshots.last().expect("last snapshot").status, TransferStatus::Completed);
+
+    fs::remove_file(path).expect("cleanup temp file");
+}
+
+#[test]
+fn send_file_with_offer_writes_metadata_before_file_bytes() {
+    let path = temp_file_path();
+    let content = b"send file with offer".to_vec();
+    fs::write(&path, &content).expect("write temp file");
+
+    let listener = TcpListener::bind("127.0.0.1:0").expect("bind listener");
+    let addr = listener.local_addr().expect("listener addr");
+    let offer = FileOffer {
+        transfer_id: "tx-offer-1".into(),
+        file_name: "offer-demo.txt".into(),
+        file_size: content.len() as u64,
+        from_device_id: "local-device".into(),
+        to_device_id: "device-a".into(),
+    };
+
+    let server = thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("accept connection");
+        let received_offer = read_file_offer(&mut stream).expect("read file offer");
+        let mut bytes = Vec::new();
+        stream.read_to_end(&mut bytes).expect("read bytes");
+        (received_offer, bytes)
+    });
+
+    let sent = block_on_ready(send_file_with_offer(&addr.to_string(), &path, &offer))
+        .expect("send file with offer");
+    let (received_offer, received_bytes) = server.join().expect("join server thread");
+
+    assert_eq!(sent, content.len() as u64);
+    assert_eq!(received_offer, offer);
+    assert_eq!(received_bytes, content);
 
     fs::remove_file(path).expect("cleanup temp file");
 }

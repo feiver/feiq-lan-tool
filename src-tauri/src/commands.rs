@@ -3,9 +3,17 @@ use std::path::Path;
 use tauri::{AppHandle, Emitter, State};
 
 use feiq_lan_tool_lib::app_state::AppState;
-use feiq_lan_tool_lib::file_transfer::send_file_with_progress;
+use feiq_lan_tool_lib::file_transfer::send_file_with_offer_and_progress;
 use feiq_lan_tool_lib::message_server::{send_broadcast, send_message};
-use feiq_lan_tool_lib::models::{ChatMessage, KnownDevice, MessagePayload, RuntimeSettings, TransferTask};
+use feiq_lan_tool_lib::models::{
+    ChatMessage,
+    FileOffer,
+    KnownDevice,
+    MessagePayload,
+    RuntimeSettings,
+    TransferStatus,
+    TransferTask,
+};
 
 const TRANSFER_UPDATED_EVENT: &str = "transfer-updated";
 
@@ -56,26 +64,33 @@ pub async fn send_file_to_device(
         .map_err(|err| err.to_string())?
         .as_millis());
     let mut task = TransferTask {
-        transfer_id,
+        transfer_id: transfer_id.clone(),
         file_name,
         file_size,
         transferred_bytes: 0,
         from_device_id: settings.device_id,
         to_device_id,
-        status: feiq_lan_tool_lib::models::TransferStatus::Pending,
+        status: TransferStatus::Pending,
+    };
+    let offer = FileOffer {
+        transfer_id,
+        file_name: task.file_name.clone(),
+        file_size,
+        from_device_id: task.from_device_id.clone(),
+        to_device_id: task.to_device_id.clone(),
     };
 
     state.upsert_transfer(task.clone());
     let _ = app.emit(TRANSFER_UPDATED_EVENT, &task);
 
-    let result = send_file_with_progress(&addr, path, &mut task, |snapshot| {
+    let result = send_file_with_offer_and_progress(&addr, path, &offer, &mut task, |snapshot| {
         state.upsert_transfer(snapshot.clone());
         let _ = app.emit(TRANSFER_UPDATED_EVENT, snapshot);
     })
     .await;
 
     if let Err(err) = result {
-        task.status = feiq_lan_tool_lib::models::TransferStatus::Failed;
+        task.status = TransferStatus::Failed;
         state.upsert_transfer(task.clone());
         let _ = app.emit(TRANSFER_UPDATED_EVENT, &task);
         return Err(err.to_string());
