@@ -5,6 +5,19 @@ import { vi } from "vitest";
 import { useAppStore } from "../app/store";
 import App from "../App";
 import * as desktopApi from "../desktop/api";
+import * as eventApi from "@tauri-apps/api/event";
+
+let messageListener:
+  | ((event: { payload: unknown }) => void)
+  | null = null;
+const mockedUnlisten = vi.fn();
+
+vi.mock("@tauri-apps/api/event", () => ({
+  listen: vi.fn(async (_eventName: string, handler: (event: { payload: unknown }) => void) => {
+    messageListener = handler;
+    return mockedUnlisten;
+  }),
+}));
 
 vi.mock("../desktop/api", async () => {
   const actual = await vi.importActual<typeof import("../desktop/api")>(
@@ -26,6 +39,7 @@ const mockedListMessages = vi.mocked(desktopApi.listMessages);
 const mockedListTransfers = vi.mocked(desktopApi.listTransfers);
 const mockedSendDirectMessage = vi.mocked(desktopApi.sendDirectMessage);
 const mockedSendBroadcastMessage = vi.mocked(desktopApi.sendBroadcastMessage);
+const mockedListen = vi.mocked(eventApi.listen);
 
 beforeEach(() => {
   useAppStore.setState({
@@ -44,6 +58,9 @@ beforeEach(() => {
   mockedListTransfers.mockReset();
   mockedSendDirectMessage.mockReset();
   mockedSendBroadcastMessage.mockReset();
+  mockedListen.mockClear();
+  mockedUnlisten.mockReset();
+  messageListener = null;
   mockedListDevices.mockResolvedValue([]);
   mockedListMessages.mockResolvedValue([]);
   mockedListTransfers.mockResolvedValue([]);
@@ -172,6 +189,44 @@ test("shows incoming message only in the sender session", async () => {
 
   await waitFor(() => {
     expect(screen.queryByText("Alice ping")).not.toBeInTheDocument();
+  });
+});
+
+test("appends realtime incoming message from tauri event", async () => {
+  mockedListDevices.mockResolvedValue([
+    {
+      device_id: "device-a",
+      nickname: "Alice",
+      host_name: "alice-pc",
+      ip_addr: "192.168.1.10",
+      message_port: 37001,
+      file_port: 37002,
+      last_seen_ms: 1000,
+    },
+  ]);
+
+  render(<App />);
+
+  await waitFor(() => {
+    expect(screen.getByText("当前会话：Alice")).toBeInTheDocument();
+  });
+
+  expect(mockedListen).toHaveBeenCalled();
+  expect(messageListener).not.toBeNull();
+
+  messageListener?.({
+    payload: {
+      message_id: "msg-realtime-1",
+      from_device_id: "device-a",
+      to_device_id: "local-device",
+      content: "实时到达",
+      sent_at_ms: 1003,
+      kind: "direct",
+    },
+  });
+
+  await waitFor(() => {
+    expect(screen.getByText("实时到达")).toBeInTheDocument();
   });
 });
 

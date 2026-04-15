@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 
 import { useAppStore } from "./app/store";
 import {
@@ -9,7 +10,7 @@ import { ChatPanel } from "./desktop/modules/chat/ChatPanel";
 import { ContactsPanel } from "./desktop/modules/contacts/ContactsPanel";
 import { SettingsPanel } from "./desktop/modules/settings/SettingsPanel";
 import { TransfersPanel } from "./desktop/modules/transfers/TransfersPanel";
-import type { MessagePayload } from "./desktop/types";
+import type { ChatMessage, MessagePayload } from "./desktop/types";
 import "./styles/app.css";
 
 function App() {
@@ -29,6 +30,27 @@ function App() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    let disposed = false;
+
+    void listen<ChatMessage>("chat-message-received", (event) => {
+      addMessage(event.payload);
+    }).then((cleanup) => {
+      if (disposed) {
+        cleanup();
+        return;
+      }
+
+      unlisten = cleanup;
+    });
+
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [addMessage]);
 
   function createPayload(toDeviceId: string, content: string): MessagePayload {
     return {
