@@ -6,15 +6,14 @@ import { useAppStore } from "../app/store";
 import App from "../App";
 import * as desktopApi from "../desktop/api";
 import * as eventApi from "@tauri-apps/api/event";
+import type { KnownDevice } from "../desktop/types";
 
-let messageListener:
-  | ((event: { payload: unknown }) => void)
-  | null = null;
+const eventListeners = new Map<string, (event: { payload: unknown }) => void>();
 const mockedUnlisten = vi.fn();
 
 vi.mock("@tauri-apps/api/event", () => ({
   listen: vi.fn(async (_eventName: string, handler: (event: { payload: unknown }) => void) => {
-    messageListener = handler;
+    eventListeners.set(_eventName, handler);
     return mockedUnlisten;
   }),
 }));
@@ -60,7 +59,7 @@ beforeEach(() => {
   mockedSendBroadcastMessage.mockReset();
   mockedListen.mockClear();
   mockedUnlisten.mockReset();
-  messageListener = null;
+  eventListeners.clear();
   mockedListDevices.mockResolvedValue([]);
   mockedListMessages.mockResolvedValue([]);
   mockedListTransfers.mockResolvedValue([]);
@@ -212,7 +211,8 @@ test("appends realtime incoming message from tauri event", async () => {
   });
 
   expect(mockedListen).toHaveBeenCalled();
-  expect(messageListener).not.toBeNull();
+  const messageListener = eventListeners.get("chat-message-received");
+  expect(messageListener).toBeDefined();
 
   messageListener?.({
     payload: {
@@ -227,6 +227,35 @@ test("appends realtime incoming message from tauri event", async () => {
 
   await waitFor(() => {
     expect(screen.getByText("实时到达")).toBeInTheDocument();
+  });
+});
+
+test("updates contacts when discovery event arrives", async () => {
+  render(<App />);
+
+  await waitFor(() => {
+    expect(screen.getByText("在线联系人")).toBeInTheDocument();
+  });
+
+  const discoveryListener = eventListeners.get("devices-updated");
+  expect(discoveryListener).toBeDefined();
+
+  const devices: KnownDevice[] = [
+    {
+      device_id: "device-c",
+      nickname: "Carol",
+      host_name: "carol-book",
+      ip_addr: "192.168.1.12",
+      message_port: 37001,
+      file_port: 37002,
+      last_seen_ms: 1004,
+    },
+  ];
+
+  discoveryListener?.({ payload: devices });
+
+  await waitFor(() => {
+    expect(screen.getByText("Carol")).toBeInTheDocument();
   });
 });
 

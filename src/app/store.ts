@@ -16,6 +16,7 @@ type AppStore = {
   settings: LocalSettings;
   transfers: TransferTask[];
   load: () => Promise<void>;
+  setDevices: (devices: KnownDevice[]) => void;
   selectDevice: (deviceId: string) => void;
   addMessage: (message: ChatMessage) => void;
   updateSettings: (patch: Partial<LocalSettings>) => void;
@@ -42,10 +43,13 @@ export const useAppStore = create<AppStore>((set) => ({
       devices,
       messages,
       transfers,
-      selectedDeviceId:
-        state.selectedDeviceId && devices.some((device) => device.device_id === state.selectedDeviceId)
-          ? state.selectedDeviceId
-          : devices[0]?.device_id ?? null,
+      selectedDeviceId: resolveSelectedDeviceId(state.selectedDeviceId, devices),
+    }));
+  },
+  setDevices(devices) {
+    set((state) => ({
+      devices,
+      selectedDeviceId: resolveSelectedDeviceId(state.selectedDeviceId, devices),
     }));
   },
   selectDevice(deviceId) {
@@ -63,3 +67,12 @@ export const useAppStore = create<AppStore>((set) => ({
     }));
   },
 }));
+
+function resolveSelectedDeviceId(
+  selectedDeviceId: string | null,
+  devices: KnownDevice[],
+): string | null {
+  return selectedDeviceId && devices.some((device) => device.device_id === selectedDeviceId)
+    ? selectedDeviceId
+    : devices[0]?.device_id ?? null;
+}

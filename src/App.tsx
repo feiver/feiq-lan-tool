@@ -10,7 +10,7 @@ import { ChatPanel } from "./desktop/modules/chat/ChatPanel";
 import { ContactsPanel } from "./desktop/modules/contacts/ContactsPanel";
 import { SettingsPanel } from "./desktop/modules/settings/SettingsPanel";
 import { TransfersPanel } from "./desktop/modules/transfers/TransfersPanel";
-import type { ChatMessage, MessagePayload } from "./desktop/types";
+import type { ChatMessage, KnownDevice, MessagePayload } from "./desktop/types";
 import "./styles/app.css";
 
 function App() {
@@ -20,6 +20,7 @@ function App() {
   const settings = useAppStore((state) => state.settings);
   const transfers = useAppStore((state) => state.transfers);
   const load = useAppStore((state) => state.load);
+  const setDevices = useAppStore((state) => state.setDevices);
   const selectDevice = useAppStore((state) => state.selectDevice);
   const addMessage = useAppStore((state) => state.addMessage);
   const updateSettings = useAppStore((state) => state.updateSettings);
@@ -51,6 +52,27 @@ function App() {
       unlisten?.();
     };
   }, [addMessage]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    let disposed = false;
+
+    void listen<KnownDevice[]>("devices-updated", (event) => {
+      setDevices(event.payload);
+    }).then((cleanup) => {
+      if (disposed) {
+        cleanup();
+        return;
+      }
+
+      unlisten = cleanup;
+    });
+
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [setDevices]);
 
   function createPayload(toDeviceId: string, content: string): MessagePayload {
     return {

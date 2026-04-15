@@ -1,7 +1,7 @@
 use std::sync::{Arc, RwLock};
 
 use crate::discovery::DeviceRegistry;
-use crate::models::{ChatMessage, KnownDevice, TransferTask};
+use crate::models::{ChatMessage, DeviceAnnouncement, KnownDevice, TransferTask};
 
 #[derive(Default, Clone)]
 pub struct AppState {
@@ -16,6 +16,18 @@ impl AppState {
             .read()
             .expect("registry read lock")
             .online_devices()
+    }
+
+    pub fn upsert_device(&self, device: DeviceAnnouncement, now_ms: i64) -> Vec<KnownDevice> {
+        let mut registry = self.registry.write().expect("registry write lock");
+        registry.upsert(device, now_ms);
+        registry.online_devices()
+    }
+
+    pub fn prune_devices(&self, now_ms: i64, timeout_ms: i64) -> Vec<KnownDevice> {
+        let mut registry = self.registry.write().expect("registry write lock");
+        registry.prune_stale(now_ms, timeout_ms);
+        registry.online_devices()
     }
 
     pub fn list_transfers(&self) -> Vec<TransferTask> {
