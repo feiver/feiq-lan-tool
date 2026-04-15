@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::env;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeviceAnnouncement {
@@ -140,12 +141,22 @@ pub struct RuntimeSettings {
 
 impl Default for RuntimeSettings {
     fn default() -> Self {
+        let default_device_name = default_device_name();
         Self {
-            device_id: "local-device".into(),
-            nickname: "未命名设备".into(),
+            device_id: default_device_name.clone(),
+            nickname: default_device_name,
             download_dir: "~/Downloads".into(),
         }
     }
+}
+
+fn default_device_name() -> String {
+    env::var("COMPUTERNAME")
+        .or_else(|_| env::var("HOSTNAME"))
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| "feiq-device".into())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -156,4 +167,16 @@ pub enum LanEvent {
     BroadcastMessage(MessagePayload),
     DeliveryRequest(DeliveryRequest),
     DeliveryResponse(DeliveryResponse),
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn runtime_settings_default_uses_non_empty_device_name() {
+        let settings = super::RuntimeSettings::default();
+
+        assert!(!settings.device_id.trim().is_empty());
+        assert_eq!(settings.nickname, settings.device_id);
+        assert_eq!(settings.download_dir, "~/Downloads");
+    }
 }

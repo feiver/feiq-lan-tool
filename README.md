@@ -30,6 +30,7 @@
 - 传输进度展示
 - 接收完成后打开目录
 - 本地昵称与下载目录配置
+- 默认使用当前电脑名称作为设备昵称
 
 ## 当前进度
 
@@ -89,6 +90,17 @@ npm run test
 npm run build
 npm run tauri dev
 ```
+
+## Portable 打包
+
+```bash
+npm run build
+npm run package:portable
+```
+
+- 本地会生成 `release/feiq-lan-tool-portable-win64.zip`
+- 解压后直接运行 `feiq-lan-tool.exe`
+- 压缩包内会同时带上 `WebView2Loader.dll`
 
 ## Git 仓库
 
