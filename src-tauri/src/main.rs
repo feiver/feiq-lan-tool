@@ -1,15 +1,18 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
+mod commands;
+
+use feiq_lan_tool_lib::app_state::AppState;
 
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet])
+        .manage(AppState::default())
+        .invoke_handler(tauri::generate_handler![
+            commands::list_devices,
+            commands::list_transfers
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
