@@ -448,6 +448,128 @@ test("sends accepted delivery response with the selected save directory", async 
   });
 });
 
+test("sends rejected delivery response when the receiver cancels", async () => {
+  const user = userEvent.setup();
+
+  mockedListDevices.mockResolvedValue([
+    {
+      device_id: "device-a",
+      nickname: "Alice",
+      host_name: "alice-pc",
+      ip_addr: "192.168.1.10",
+      message_port: 37001,
+      file_port: 37002,
+      last_seen_ms: 1000,
+    },
+  ]);
+
+  render(<App />);
+
+  await waitFor(() => {
+    expect(screen.getByText("当前会话：Alice")).toBeInTheDocument();
+  });
+
+  const messageListener = eventListeners.get("chat-message-received");
+  expect(messageListener).toBeDefined();
+
+  await act(async () => {
+    messageListener?.({
+      payload: {
+        message_id: "req-2",
+        from_device_id: "device-a",
+        to_device_id: "local-device",
+        content: "delivery request",
+        sent_at_ms: 1002,
+        kind: "delivery",
+        delivery: {
+          request_id: "req-2",
+          status: "PendingDecision",
+          save_root: null,
+          entries: [
+            {
+              entry_id: "entry-file",
+              display_name: "封面.png",
+              relative_path: "封面.png",
+              file_size: 2048,
+              kind: "File",
+            },
+          ],
+        },
+      },
+    });
+  });
+
+  await user.click(screen.getByRole("button", { name: "取消" }));
+
+  await waitFor(() => {
+    expect(mockedSendDeliveryResponse).toHaveBeenCalledWith({
+      addr: "192.168.1.10:37001",
+      requestId: "req-2",
+      toDeviceId: "device-a",
+      decision: "Rejected",
+      saveRoot: null,
+    });
+  });
+});
+
+test("opens the saved directory from a completed incoming delivery card", async () => {
+  const user = userEvent.setup();
+
+  mockedListDevices.mockResolvedValue([
+    {
+      device_id: "device-a",
+      nickname: "Alice",
+      host_name: "alice-pc",
+      ip_addr: "192.168.1.10",
+      message_port: 37001,
+      file_port: 37002,
+      last_seen_ms: 1000,
+    },
+  ]);
+
+  render(<App />);
+
+  await waitFor(() => {
+    expect(screen.getByText("当前会话：Alice")).toBeInTheDocument();
+  });
+
+  const messageListener = eventListeners.get("chat-message-received");
+  expect(messageListener).toBeDefined();
+
+  await act(async () => {
+    messageListener?.({
+      payload: {
+        message_id: "req-3",
+        from_device_id: "device-a",
+        to_device_id: "local-device",
+        content: "delivery request",
+        sent_at_ms: 1002,
+        kind: "delivery",
+        delivery: {
+          request_id: "req-3",
+          status: "Completed",
+          save_root: "D:/接收区",
+          entries: [
+            {
+              entry_id: "entry-file",
+              display_name: "项目资料",
+              relative_path: "项目资料/说明.txt",
+              file_size: 512,
+              kind: "File",
+            },
+          ],
+        },
+      },
+    });
+  });
+
+  await user.click(screen.getByRole("button", { name: "打开目录" }));
+
+  await waitFor(() => {
+    expect(mockedOpenDirectory).toHaveBeenCalledWith("D:/接收区");
+  });
+});
+
 test("shows incoming message only in the sender session", async () => {
   const user = userEvent.setup();
 
