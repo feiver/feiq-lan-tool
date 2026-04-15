@@ -32,6 +32,7 @@ fn state_helpers_return_devices_and_transfers() {
             transfer_id: "tx-1".into(),
             file_name: "demo.txt".into(),
             file_size: 12,
+            transferred_bytes: 6,
             from_device_id: "device-a".into(),
             to_device_id: "device-b".into(),
             status: TransferStatus::InProgress,

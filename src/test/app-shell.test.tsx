@@ -77,6 +77,7 @@ test("loads devices and transfers from desktop api", async () => {
       transfer_id: "tx-1",
       file_name: "demo.txt",
       file_size: 12,
+      transferred_bytes: 6,
       from_device_id: "device-a",
       to_device_id: "device-b",
       status: "InProgress",
@@ -88,6 +89,7 @@ test("loads devices and transfers from desktop api", async () => {
   await waitFor(() => {
     expect(screen.getByText("Alice")).toBeInTheDocument();
     expect(screen.getByText("demo.txt")).toBeInTheDocument();
+    expect(screen.getByText("50%")).toBeInTheDocument();
   });
 });
 

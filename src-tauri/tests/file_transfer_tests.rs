@@ -47,6 +47,7 @@ fn mark_transfer_status_updates_task_state() {
         transfer_id: "tx-1".into(),
         file_name: "demo.txt".into(),
         file_size: 12,
+        transferred_bytes: 0,
         from_device_id: "device-a".into(),
         to_device_id: "device-b".into(),
         status: TransferStatus::Pending,

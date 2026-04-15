@@ -12,6 +12,7 @@ export type TransferTask = {
   transfer_id: string;
   file_name: string;
   file_size: number;
+  transferred_bytes: number;
   from_device_id: string;
   to_device_id: string;
   status: "Pending" | "InProgress" | "Completed" | "Failed" | "Cancelled";

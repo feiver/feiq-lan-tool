@@ -53,6 +53,7 @@ pub struct TransferTask {
     pub transfer_id: String,
     pub file_name: String,
     pub file_size: u64,
+    pub transferred_bytes: u64,
     pub from_device_id: String,
     pub to_device_id: String,
     pub status: TransferStatus,

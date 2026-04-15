@@ -5,6 +5,14 @@ type TransfersPanelProps = {
 };
 
 export function TransfersPanel({ transfers }: TransfersPanelProps) {
+  function formatProgress(task: TransferTask): string {
+    if (task.file_size <= 0) {
+      return "0%";
+    }
+
+    return `${Math.round((task.transferred_bytes / task.file_size) * 100)}%`;
+  }
+
   return (
     <section className="panel panel-transfers">
       <div className="panel-header">
@@ -16,6 +24,7 @@ export function TransfersPanel({ transfers }: TransfersPanelProps) {
           transfers.map((task) => (
             <li key={task.transfer_id}>
               <strong>{task.file_name}</strong>
+              <span>{formatProgress(task)}</span>
               <span>{task.status}</span>
             </li>
           ))
