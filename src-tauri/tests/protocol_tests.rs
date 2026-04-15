@@ -1,10 +1,5 @@
-#[path = "../src/models.rs"]
-mod models;
-#[path = "../src/protocol.rs"]
-mod protocol;
-
-use models::{DeviceAnnouncement, LanEvent, MessagePayload};
-use protocol::{decode_event, encode_event};
+use feiq_lan_tool_lib::models::{DeviceAnnouncement, LanEvent, MessagePayload};
+use feiq_lan_tool_lib::protocol::{decode_event, encode_event};
 
 #[test]
 fn protocol_roundtrip_for_device_announcement() {
