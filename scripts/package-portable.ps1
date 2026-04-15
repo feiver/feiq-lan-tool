@@ -16,10 +16,10 @@ if (-not (Test-Path $distIndexPath)) {
 }
 
 Write-Host "Building portable desktop executable..."
-cargo build --manifest-path (Join-Path $tauriRoot "Cargo.toml")
+npm.cmd exec tauri build -- --debug --no-bundle --config "scripts/tauri.portable.conf.json"
 
 if ($LASTEXITCODE -ne 0) {
-    throw "cargo build failed with exit code $LASTEXITCODE"
+    throw "tauri build failed with exit code $LASTEXITCODE"
 }
 
 if (-not (Test-Path $exePath)) {
