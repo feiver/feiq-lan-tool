@@ -33,12 +33,12 @@ export function ContactsPanel({
       ) : (
         <>
           <div className="contact-card is-active">
-            <strong>研发组广播</strong>
-            <span>等待接入真实在线列表</span>
+            <strong>暂未发现在线设备</strong>
+            <span>请确认对方与您处于同一局域网，并保持应用在线。</span>
           </div>
           <div className="contact-card">
-            <strong>默认设备占位</strong>
-            <span>Task 8 接入联系人模块</span>
+            <strong>发现后自动出现</strong>
+            <span>检测到设备广播后，联系人列表会实时更新。</span>
           </div>
         </>
       )}

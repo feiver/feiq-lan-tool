@@ -92,6 +92,15 @@ test("renders three primary panels", () => {
   expect(screen.getByText("传输任务")).toBeInTheDocument();
 });
 
+test("shows helpful empty state when no contacts are online", () => {
+  render(<App />);
+
+  return waitFor(() => {
+    expect(screen.getByText("暂未发现在线设备")).toBeInTheDocument();
+    expect(screen.getByText("请确认对方与您处于同一局域网，并保持应用在线。")).toBeInTheDocument();
+  });
+});
+
 test("renders settings panel", () => {
   render(<App />);
 
