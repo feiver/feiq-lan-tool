@@ -1,0 +1,165 @@
+:root {
+  color: #14213d;
+  background:
+    radial-gradient(circle at top left, rgba(111, 181, 255, 0.28), transparent 32%),
+    linear-gradient(135deg, #f6f8fc 0%, #e8eef8 45%, #eef4fb 100%);
+  font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(420px, 1fr) minmax(260px, 320px);
+  gap: 18px;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 24px;
+  padding: 22px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 18px 60px rgba(31, 50, 81, 0.12);
+  backdrop-filter: blur(18px);
+}
+
+.panel::after {
+  content: "";
+  position: absolute;
+  inset: auto -20% -30% auto;
+  width: 180px;
+  height: 180px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(60, 122, 255, 0.12), transparent 68%);
+  pointer-events: none;
+}
+
+.panel-header {
+  margin-bottom: 18px;
+}
+
+.panel-kicker {
+  margin: 0 0 8px;
+  color: #5c7aa6;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.panel h2 {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+.panel-contacts,
+.panel-transfers {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.contact-card,
+.transfer-list li,
+.chat-placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(244, 248, 255, 0.86);
+  color: #3d526f;
+}
+
+.contact-card strong,
+.transfer-list strong {
+  color: #152238;
+}
+
+.contact-card.is-active {
+  background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+  color: #eff6ff;
+}
+
+.contact-card.is-active strong {
+  color: #ffffff;
+}
+
+.panel-chat {
+  display: flex;
+  flex-direction: column;
+}
+
+.right-column {
+  display: grid;
+  gap: 18px;
+}
+
+.chat-placeholder {
+  min-height: 100%;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.chat-placeholder p {
+  margin: 0;
+}
+
+.transfer-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.settings-field {
+  display: grid;
+  gap: 8px;
+  color: #3d526f;
+  font-size: 14px;
+}
+
+.settings-field input {
+  width: 100%;
+  border: 1px solid rgba(100, 135, 190, 0.28);
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: rgba(244, 248, 255, 0.9);
+  color: #14213d;
+}
+
+@media (max-width: 1080px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-chat {
+    min-height: 280px;
+  }
+}
