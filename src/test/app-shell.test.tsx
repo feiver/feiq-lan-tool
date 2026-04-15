@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 
@@ -142,7 +142,9 @@ test("loads devices and transfers from desktop api", async () => {
   await waitFor(() => {
     expect(screen.getByText("Alice")).toBeInTheDocument();
     expect(screen.getByText("demo.txt")).toBeInTheDocument();
-    expect(screen.getByText("50%")).toBeInTheDocument();
+    expect(screen.getByText("来自 Alice")).toBeInTheDocument();
+    expect(screen.getByText("50% · 6 B / 12 B")).toBeInTheDocument();
+    expect(screen.getByText("传输中")).toBeInTheDocument();
   });
 });
 
@@ -301,22 +303,93 @@ test("shows transfer task when transfer event arrives", async () => {
   const transferListener = eventListeners.get("transfer-updated");
   expect(transferListener).toBeDefined();
 
-  transferListener?.({
-    payload: {
-      transfer_id: "tx-runtime-1",
-      file_name: "incoming.bin",
-      file_size: 100,
-      transferred_bytes: 40,
-      from_device_id: "device-a",
-      to_device_id: "local-device",
-      status: "InProgress",
-    },
+  await act(async () => {
+    transferListener?.({
+      payload: {
+        transfer_id: "tx-runtime-1",
+        file_name: "incoming.bin",
+        file_size: 100,
+        transferred_bytes: 40,
+        from_device_id: "device-a",
+        to_device_id: "local-device",
+        status: "InProgress",
+      },
+    });
   });
 
   await waitFor(() => {
     expect(screen.getByText("incoming.bin")).toBeInTheDocument();
-    expect(screen.getByText("40%")).toBeInTheDocument();
-    expect(screen.getByText("InProgress")).toBeInTheDocument();
+    expect(screen.getByText("来自 device-a")).toBeInTheDocument();
+    expect(screen.getByText("40% · 40 B / 100 B")).toBeInTheDocument();
+    expect(screen.getByText("传输中")).toBeInTheDocument();
+  });
+});
+
+test("shows outgoing transfer direction and localized status", async () => {
+  mockedListDevices.mockResolvedValue([
+    {
+      device_id: "device-a",
+      nickname: "Alice",
+      host_name: "alice-pc",
+      ip_addr: "192.168.1.10",
+      message_port: 37001,
+      file_port: 37002,
+      last_seen_ms: 1000,
+    },
+  ]);
+  mockedListTransfers.mockResolvedValue([
+    {
+      transfer_id: "tx-outgoing-1",
+      file_name: "design.pdf",
+      file_size: 100,
+      transferred_bytes: 40,
+      from_device_id: "local-device",
+      to_device_id: "device-a",
+      status: "InProgress",
+    },
+  ]);
+
+  render(<App />);
+
+  await waitFor(() => {
+    expect(screen.getByText("design.pdf")).toBeInTheDocument();
+    expect(screen.getByText("发送至 Alice")).toBeInTheDocument();
+    expect(screen.getByText("传输中")).toBeInTheDocument();
+    expect(screen.getByText("40% · 40 B / 100 B")).toBeInTheDocument();
+  });
+});
+
+test("shows incoming transfer direction with contact name", async () => {
+  mockedListDevices.mockResolvedValue([
+    {
+      device_id: "device-a",
+      nickname: "Alice",
+      host_name: "alice-pc",
+      ip_addr: "192.168.1.10",
+      message_port: 37001,
+      file_port: 37002,
+      last_seen_ms: 1000,
+    },
+  ]);
+  mockedListTransfers.mockResolvedValue([
+    {
+      transfer_id: "tx-incoming-1",
+      file_name: "report.zip",
+      file_size: 200,
+      transferred_bytes: 200,
+      from_device_id: "device-a",
+      to_device_id: "local-device",
+      status: "Completed",
+    },
+  ]);
+
+  render(<App />);
+
+  await waitFor(() => {
+    expect(screen.getByText("report.zip")).toBeInTheDocument();
+    expect(screen.getByText("来自 Alice")).toBeInTheDocument();
+    expect(screen.getByText("已完成")).toBeInTheDocument();
+    expect(screen.getByText("100% · 200 B / 200 B")).toBeInTheDocument();
   });
 });
 

@@ -227,7 +227,11 @@ function App() {
         canSendFile={Boolean(activeDevice && draftFilePath.trim())}
       />
       <div className="right-column">
-        <TransfersPanel transfers={transfers} />
+        <TransfersPanel
+          devices={devices}
+          localDeviceId={settings.deviceId}
+          transfers={transfers}
+        />
         <SettingsPanel
           nickname={settings.nickname}
           downloadDir={settings.downloadDir}
