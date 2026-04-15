@@ -11,6 +11,17 @@ pub struct DeviceAnnouncement {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct KnownDevice {
+    pub device_id: String,
+    pub nickname: String,
+    pub host_name: String,
+    pub ip_addr: String,
+    pub message_port: u16,
+    pub file_port: u16,
+    pub last_seen_ms: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MessagePayload {
     pub message_id: String,
     pub from_device_id: String,
