@@ -1,18 +1,35 @@
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 import { useAppStore } from "./app/store";
 import {
+  pickDeliveryDirectory,
+  pickDeliveryFiles,
   sendBroadcastMessage,
   sendDirectMessage,
   sendFileToDevice,
   syncRuntimeSettings,
 } from "./desktop/api";
 import { ChatPanel } from "./desktop/modules/chat/ChatPanel";
+import {
+  createPendingEntriesFromDroppedPaths,
+  createPendingFileEntries,
+  createPendingDirectoryEntry,
+  mergePendingDeliveryEntries,
+  type PendingDeliveryEntry,
+  summarizeDeliverySelection,
+} from "./desktop/modules/chat/delivery";
 import { ContactsPanel } from "./desktop/modules/contacts/ContactsPanel";
 import { SettingsPanel } from "./desktop/modules/settings/SettingsPanel";
 import { TransfersPanel } from "./desktop/modules/transfers/TransfersPanel";
-import type { ChatMessage, KnownDevice, MessagePayload, TransferTask } from "./desktop/types";
+import type {
+  ChatMessage,
+  DeliveryEntry,
+  KnownDevice,
+  MessagePayload,
+  TransferTask,
+} from "./desktop/types";
 import "./styles/app.css";
 
 function App() {
@@ -31,7 +48,8 @@ function App() {
   const activeDevice =
     devices.find((device) => device.device_id === selectedDeviceId) ?? null;
   const [draftMessage, setDraftMessage] = useState("");
-  const [draftFilePath, setDraftFilePath] = useState("");
+  const [pendingDeliveries, setPendingDeliveries] = useState<PendingDeliveryEntry[]>([]);
+  const [isDeliveryDragActive, setIsDeliveryDragActive] = useState(false);
 
   useEffect(() => {
     void load();
@@ -108,6 +126,49 @@ function App() {
     };
   }, [upsertTransfer]);
 
+  useEffect(() => {
+    let disposed = false;
+    let unlisten: (() => void) | null = null;
+
+    void getCurrentWindow()
+      .onDragDropEvent((event) => {
+        const payload = event.payload;
+
+        if (payload.type === "enter" || payload.type === "over") {
+          setIsDeliveryDragActive(true);
+          return;
+        }
+
+        if (payload.type === "leave") {
+          setIsDeliveryDragActive(false);
+          return;
+        }
+
+        setIsDeliveryDragActive(false);
+        if (payload.type === "drop") {
+          setPendingDeliveries((current) =>
+            mergePendingDeliveryEntries(
+              current,
+              createPendingEntriesFromDroppedPaths(payload.paths),
+            ),
+          );
+        }
+      })
+      .then((cleanup) => {
+        if (disposed) {
+          cleanup();
+          return;
+        }
+
+        unlisten = cleanup;
+      });
+
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, []);
+
   function createPayload(toDeviceId: string, content: string): MessagePayload {
     return {
       message_id: `msg-${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -168,22 +229,67 @@ function App() {
     setDraftMessage("");
   }
 
-  async function handleSendFile() {
-    if (!activeDevice) {
+  async function handlePickFiles() {
+    const selectedPaths = await pickDeliveryFiles();
+    if (selectedPaths.length === 0) {
       return;
     }
 
-    const filePath = draftFilePath.trim();
-    if (!filePath) {
-      return;
-    }
-
-    await sendFileToDevice(
-      `${activeDevice.ip_addr}:${activeDevice.file_port}`,
-      filePath,
-      activeDevice.device_id,
+    setPendingDeliveries((current) =>
+      mergePendingDeliveryEntries(current, createPendingFileEntries(selectedPaths)),
     );
-    setDraftFilePath("");
+  }
+
+  async function handlePickDirectory() {
+    const selectedPath = await pickDeliveryDirectory();
+    if (!selectedPath) {
+      return;
+    }
+
+    setPendingDeliveries((current) =>
+      mergePendingDeliveryEntries(current, [createPendingDirectoryEntry(selectedPath)]),
+    );
+  }
+
+  async function handleSendDelivery() {
+    if (!activeDevice || pendingDeliveries.length === 0) {
+      return;
+    }
+
+    const summary = summarizeDeliverySelection(pendingDeliveries);
+    const standaloneFiles = pendingDeliveries.filter(
+      (entry) => entry.kind === "file" && entry.group_name === null,
+    );
+
+    if (!summary.hasDirectoryLikeEntries) {
+      await Promise.all(
+        standaloneFiles.map((entry) =>
+          sendFileToDevice(
+            `${activeDevice.ip_addr}:${activeDevice.file_port}`,
+            entry.source_path,
+            activeDevice.device_id,
+          ),
+        ),
+      );
+      setPendingDeliveries([]);
+      return;
+    }
+
+    addMessage({
+      message_id: `delivery-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      from_device_id: settings.deviceId,
+      to_device_id: activeDevice.device_id,
+      content: formatPendingDeliveryMessage(summary),
+      sent_at_ms: Date.now(),
+      kind: "delivery",
+      delivery: {
+        request_id: `request-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        status: "PendingDecision",
+        entries: pendingDeliveries.map(mapPendingDeliveryEntry),
+        save_root: null,
+      },
+    });
+    setPendingDeliveries([]);
   }
 
   const visibleMessages = messages.filter((message) => {
@@ -217,15 +323,17 @@ function App() {
         messages={visibleMessages}
         localDeviceId={settings.deviceId}
         draftMessage={draftMessage}
-        filePath={draftFilePath}
+        pendingDeliveries={pendingDeliveries}
+        isDeliveryDragActive={isDeliveryDragActive}
         onDraftChange={setDraftMessage}
-        onFilePathChange={setDraftFilePath}
+        onPickFiles={() => void handlePickFiles()}
+        onPickDirectory={() => void handlePickDirectory()}
         onSendDirect={() => void handleSendDirect()}
         onSendBroadcast={() => void handleSendBroadcast()}
-        onSendFile={() => void handleSendFile()}
+        onSendDelivery={() => void handleSendDelivery()}
         canSendDirect={Boolean(activeDevice && draftMessage.trim())}
         canSendBroadcast={Boolean(devices.length > 0 && draftMessage.trim())}
-        canSendFile={Boolean(activeDevice && draftFilePath.trim())}
+        canSendDelivery={Boolean(activeDevice && pendingDeliveries.length > 0)}
       />
       <div className="right-column">
         <TransfersPanel
@@ -242,6 +350,32 @@ function App() {
       </div>
     </main>
   );
+}
+
+function formatPendingDeliveryMessage(
+  summary: ReturnType<typeof summarizeDeliverySelection>,
+): string {
+  const fragments: string[] = [];
+
+  if (summary.groups.length > 0) {
+    fragments.push(`${summary.groups.length} 个目录组`);
+  }
+
+  if (summary.files.length > 0) {
+    fragments.push(`${summary.files.length} 个文件`);
+  }
+
+  return `待投递内容：${fragments.join("，")}`;
+}
+
+function mapPendingDeliveryEntry(entry: PendingDeliveryEntry): DeliveryEntry {
+  return {
+    entry_id: `entry-${entry.kind}-${entry.display_name}`,
+    display_name: entry.display_name,
+    relative_path: entry.relative_path,
+    file_size: entry.file_size,
+    kind: entry.kind === "directory" ? "Directory" : "File",
+  };
 }
 
 export default App;

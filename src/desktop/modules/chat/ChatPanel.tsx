@@ -1,19 +1,25 @@
 import type { ChatMessage } from "../../types";
+import {
+  summarizeDeliverySelection,
+  type PendingDeliveryEntry,
+} from "./delivery";
 
 type ChatPanelProps = {
   activeDeviceName: string | null;
   messages: ChatMessage[];
   localDeviceId: string;
   draftMessage: string;
-  filePath: string;
+  pendingDeliveries: PendingDeliveryEntry[];
+  isDeliveryDragActive: boolean;
   onDraftChange: (value: string) => void;
-  onFilePathChange: (value: string) => void;
+  onPickFiles: () => void;
+  onPickDirectory: () => void;
   onSendDirect: () => void;
   onSendBroadcast: () => void;
-  onSendFile: () => void;
+  onSendDelivery: () => void;
   canSendDirect: boolean;
   canSendBroadcast: boolean;
-  canSendFile: boolean;
+  canSendDelivery: boolean;
 };
 
 export function ChatPanel({
@@ -21,16 +27,20 @@ export function ChatPanel({
   messages,
   localDeviceId,
   draftMessage,
-  filePath,
+  pendingDeliveries,
+  isDeliveryDragActive,
   onDraftChange,
-  onFilePathChange,
+  onPickFiles,
+  onPickDirectory,
   onSendDirect,
   onSendBroadcast,
-  onSendFile,
+  onSendDelivery,
   canSendDirect,
   canSendBroadcast,
-  canSendFile,
+  canSendDelivery,
 }: ChatPanelProps) {
+  const deliverySummary = summarizeDeliverySelection(pendingDeliveries);
+
   function formatEmptyState(): string {
     if (activeDeviceName) {
       return `已连接 ${activeDeviceName}，可发送单聊消息或文件。`;
@@ -44,7 +54,12 @@ export function ChatPanel({
       message.from_device_id === localDeviceId
         ? "我"
         : activeDeviceName ?? message.from_device_id;
-    const kindLabel = message.kind === "broadcast" ? "广播" : "单聊";
+    const kindLabel =
+      message.kind === "broadcast"
+        ? "广播"
+        : message.kind === "delivery"
+          ? "投递"
+          : "单聊";
     return `${senderName} · ${kindLabel}`;
   }
 
@@ -88,12 +103,6 @@ export function ChatPanel({
         value={draftMessage}
         onChange={(event) => onDraftChange(event.currentTarget.value)}
       />
-      <input
-        className="chat-file-input"
-        placeholder="输入待发送文件路径"
-        value={filePath}
-        onChange={(event) => onFilePathChange(event.currentTarget.value)}
-      />
       <div className="chat-actions">
         <button type="button" onClick={onSendDirect} disabled={!canSendDirect}>
           发送单聊
@@ -101,10 +110,50 @@ export function ChatPanel({
         <button type="button" onClick={onSendBroadcast} disabled={!canSendBroadcast}>
           发送广播
         </button>
-        <button type="button" onClick={onSendFile} disabled={!canSendFile}>
-          发送文件
+      </div>
+      <div className={`delivery-dropzone${isDeliveryDragActive ? " is-active" : ""}`}>
+        <strong>拖拽上传</strong>
+        <span>将文件或文件夹拖到这里，或使用下方按钮选择。</span>
+      </div>
+      <div className="delivery-actions">
+        <button type="button" onClick={onPickFiles}>
+          选择文件
+        </button>
+        <button type="button" onClick={onPickDirectory}>
+          选择文件夹
+        </button>
+        <button type="button" onClick={onSendDelivery} disabled={!canSendDelivery}>
+          发送投递
         </button>
       </div>
+      {pendingDeliveries.length > 0 ? (
+        <section className="delivery-preview">
+          <div className="delivery-preview-header">
+            <strong>待发送投递</strong>
+            <span>{deliverySummary.totalEntryCount} 项</span>
+          </div>
+          {deliverySummary.groups.length > 0 ? (
+            <ul className="delivery-preview-list">
+              {deliverySummary.groups.map((group) => (
+                <li key={group.groupName}>
+                  <strong>{group.groupName}/</strong>
+                  <span>{group.entryCount} 项</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {deliverySummary.files.length > 0 ? (
+            <ul className="delivery-preview-list">
+              {deliverySummary.files.map((file) => (
+                <li key={file.displayName}>
+                  <strong>{file.displayName}</strong>
+                  <span>{file.fileSize > 0 ? `${file.fileSize} B` : "待发送"}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+      ) : null}
     </section>
   );
 }

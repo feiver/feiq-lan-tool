@@ -6,16 +6,25 @@ import { useAppStore } from "../app/store";
 import App from "../App";
 import * as desktopApi from "../desktop/api";
 import * as eventApi from "@tauri-apps/api/event";
+import * as windowApi from "@tauri-apps/api/window";
 import type { KnownDevice } from "../desktop/types";
 
 const eventListeners = new Map<string, (event: { payload: unknown }) => void>();
 const mockedUnlisten = vi.fn();
+const mockedWindowUnlisten = vi.fn();
+const mockedOnDragDropEvent = vi.fn(async () => mockedWindowUnlisten);
 
 vi.mock("@tauri-apps/api/event", () => ({
   listen: vi.fn(async (_eventName: string, handler: (event: { payload: unknown }) => void) => {
     eventListeners.set(_eventName, handler);
     return mockedUnlisten;
   }),
+}));
+
+vi.mock("@tauri-apps/api/window", () => ({
+  getCurrentWindow: vi.fn(() => ({
+    onDragDropEvent: mockedOnDragDropEvent,
+  })),
 }));
 
 vi.mock("../desktop/api", async () => {
@@ -30,6 +39,8 @@ vi.mock("../desktop/api", async () => {
     listTransfers: vi.fn(),
     getRuntimeSettings: vi.fn(),
     syncRuntimeSettings: vi.fn(),
+    pickDeliveryFiles: vi.fn(),
+    pickDeliveryDirectory: vi.fn(),
     sendFileToDevice: vi.fn(),
     sendDirectMessage: vi.fn(),
     sendBroadcastMessage: vi.fn(),
@@ -41,10 +52,13 @@ const mockedListMessages = vi.mocked(desktopApi.listMessages);
 const mockedListTransfers = vi.mocked(desktopApi.listTransfers);
 const mockedGetRuntimeSettings = vi.mocked(desktopApi.getRuntimeSettings);
 const mockedSyncRuntimeSettings = vi.mocked(desktopApi.syncRuntimeSettings);
+const mockedPickDeliveryFiles = vi.mocked(desktopApi.pickDeliveryFiles);
+const mockedPickDeliveryDirectory = vi.mocked(desktopApi.pickDeliveryDirectory);
 const mockedSendFileToDevice = vi.mocked(desktopApi.sendFileToDevice);
 const mockedSendDirectMessage = vi.mocked(desktopApi.sendDirectMessage);
 const mockedSendBroadcastMessage = vi.mocked(desktopApi.sendBroadcastMessage);
 const mockedListen = vi.mocked(eventApi.listen);
+const mockedGetCurrentWindow = vi.mocked(windowApi.getCurrentWindow);
 
 beforeEach(() => {
   useAppStore.setState({
@@ -64,11 +78,16 @@ beforeEach(() => {
   mockedListTransfers.mockReset();
   mockedGetRuntimeSettings.mockReset();
   mockedSyncRuntimeSettings.mockReset();
+  mockedPickDeliveryFiles.mockReset();
+  mockedPickDeliveryDirectory.mockReset();
   mockedSendFileToDevice.mockReset();
   mockedSendDirectMessage.mockReset();
   mockedSendBroadcastMessage.mockReset();
   mockedListen.mockClear();
   mockedUnlisten.mockReset();
+  mockedGetCurrentWindow.mockClear();
+  mockedOnDragDropEvent.mockClear();
+  mockedWindowUnlisten.mockReset();
   eventListeners.clear();
   mockedListDevices.mockResolvedValue([]);
   mockedListMessages.mockResolvedValue([]);
@@ -79,6 +98,8 @@ beforeEach(() => {
     downloadDir: "~/Downloads",
   });
   mockedSyncRuntimeSettings.mockResolvedValue();
+  mockedPickDeliveryFiles.mockResolvedValue([]);
+  mockedPickDeliveryDirectory.mockResolvedValue(null);
   mockedSendFileToDevice.mockResolvedValue();
   mockedSendDirectMessage.mockResolvedValue();
   mockedSendBroadcastMessage.mockResolvedValue();
@@ -205,6 +226,47 @@ test("shows actionable empty state for the active session", async () => {
   await waitFor(() => {
     expect(screen.getByText("当前会话：Alice")).toBeInTheDocument();
     expect(screen.getByText("已连接 Alice，可发送单聊消息或文件。")).toBeInTheDocument();
+  });
+});
+
+test("shows grouped folders and standalone files in the pending delivery preview", async () => {
+  const user = userEvent.setup();
+
+  mockedListDevices.mockResolvedValue([
+    {
+      device_id: "device-a",
+      nickname: "Alice",
+      host_name: "alice-pc",
+      ip_addr: "192.168.1.10",
+      message_port: 37001,
+      file_port: 37002,
+      last_seen_ms: 1000,
+    },
+  ]);
+  mockedPickDeliveryFiles.mockResolvedValue([
+    "C:/work/报价单.xlsx",
+    "C:/work/封面.png",
+  ]);
+  mockedPickDeliveryDirectory.mockResolvedValue("C:/work/项目资料");
+
+  render(<App />);
+
+  await waitFor(() => {
+    expect(screen.getByText("当前会话：Alice")).toBeInTheDocument();
+  });
+
+  await user.click(screen.getByRole("button", { name: "选择文件" }));
+  await waitFor(() => {
+    expect(screen.getByText("报价单.xlsx")).toBeInTheDocument();
+    expect(screen.getByText("封面.png")).toBeInTheDocument();
+  });
+
+  await user.click(screen.getByRole("button", { name: "选择文件夹" }));
+
+  await waitFor(() => {
+    expect(screen.getByText("项目资料/")).toBeInTheDocument();
+    expect(screen.getByText("报价单.xlsx")).toBeInTheDocument();
+    expect(screen.getByText("封面.png")).toBeInTheDocument();
   });
 });
 
@@ -492,7 +554,7 @@ test("shows transferred bytes when total file size is unknown", async () => {
   });
 });
 
-test("sends file to the active device file port", async () => {
+test("sends selected standalone files through the legacy file transfer command", async () => {
   const user = userEvent.setup();
 
   mockedListDevices.mockResolvedValue([
@@ -513,8 +575,10 @@ test("sends file to the active device file port", async () => {
     expect(screen.getByText("当前会话：Alice")).toBeInTheDocument();
   });
 
-  await user.type(screen.getByPlaceholderText("输入待发送文件路径"), "C:\\temp\\demo.txt");
-  await user.click(screen.getByRole("button", { name: "发送文件" }));
+  mockedPickDeliveryFiles.mockResolvedValue(["C:\\temp\\demo.txt"]);
+
+  await user.click(screen.getByRole("button", { name: "选择文件" }));
+  await user.click(screen.getByRole("button", { name: "发送投递" }));
 
   await waitFor(() => {
     expect(mockedSendFileToDevice).toHaveBeenCalledWith(

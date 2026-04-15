@@ -136,7 +136,7 @@ cargo test --test commands_tests
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add src-tauri/src/models.rs src-tauri/src/app_state.rs src-tauri/tests/protocol_tests.rs src-tauri/tests/commands_tests.rs src/desktop/types.ts
@@ -155,7 +155,7 @@ git commit -m "feat: 补齐文件投递共享模型"
 - Create: `D:\我的工作空间\feiq-lan-tool\src\test\delivery-selection.test.ts`
 - Modify: `D:\我的工作空间\feiq-lan-tool\src\test\app-shell.test.tsx`
 
-- [ ] **Step 1: Install the dialog dependency**
+- [x] **Step 1: Install the dialog dependency**
 
 Run:
 
@@ -165,7 +165,7 @@ npm.cmd install @tauri-apps/plugin-dialog
 
 Expected: `package.json` includes `@tauri-apps/plugin-dialog`.
 
-- [ ] **Step 2: Write the failing selection tests**
+- [x] **Step 2: Write the failing selection tests**
 
 Create `src/test/delivery-selection.test.ts`:
 
@@ -195,7 +195,7 @@ test("shows grouped folder and standalone files before sending", async () => {
 });
 ```
 
-- [ ] **Step 3: Run the tests to verify RED**
+- [x] **Step 3: Run the tests to verify RED**
 
 Run:
 
@@ -205,7 +205,7 @@ npm.cmd run test -- delivery-selection app-shell
 
 Expected: FAIL because there is no selection helper or pending delivery UI.
 
-- [ ] **Step 4: Add the minimal selection helper and picker wrappers**
+- [x] **Step 4: Add the minimal selection helper and picker wrappers**
 
 Create `src/desktop/modules/chat/delivery.ts`:
 
@@ -235,7 +235,7 @@ export async function pickDirectory(): Promise<string | null> {
 }
 ```
 
-- [ ] **Step 5: Implement the minimal pending delivery UI**
+- [x] **Step 5: Implement the minimal pending delivery UI**
 
 In `src/App.tsx`:
 
@@ -259,7 +259,7 @@ In `ChatPanel.tsx` render:
 
 Show the summary from `summarizeDeliverySelection(pendingDeliveries)`.
 
-- [ ] **Step 6: Run the tests to verify GREEN**
+- [x] **Step 6: Run the tests to verify GREEN**
 
 Run:
 

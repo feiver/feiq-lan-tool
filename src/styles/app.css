@@ -146,17 +146,6 @@ body {
   font: inherit;
 }
 
-.chat-file-input {
-  width: 100%;
-  margin-top: 12px;
-  border: 1px solid rgba(100, 135, 190, 0.28);
-  border-radius: 18px;
-  padding: 14px 16px;
-  background: rgba(244, 248, 255, 0.92);
-  color: #14213d;
-  font: inherit;
-}
-
 .chat-log {
   display: grid;
   gap: 10px;
@@ -194,7 +183,8 @@ body {
   margin-top: 14px;
 }
 
-.chat-actions button {
+.chat-actions button,
+.delivery-actions button {
   border: 0;
   border-radius: 999px;
   padding: 10px 16px;
@@ -204,9 +194,67 @@ body {
   font: inherit;
 }
 
-.chat-actions button[disabled] {
+.chat-actions button[disabled],
+.delivery-actions button[disabled] {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.delivery-dropzone,
+.delivery-preview {
+  margin-top: 14px;
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(244, 248, 255, 0.9);
+  color: #3d526f;
+}
+
+.delivery-dropzone {
+  display: grid;
+  gap: 6px;
+  border: 1px dashed rgba(59, 130, 246, 0.32);
+}
+
+.delivery-dropzone.is-active {
+  border-color: rgba(29, 78, 216, 0.72);
+  background: rgba(219, 234, 254, 0.9);
+}
+
+.delivery-dropzone strong,
+.delivery-preview strong {
+  color: #152238;
+}
+
+.delivery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.delivery-preview {
+  display: grid;
+  gap: 12px;
+}
+
+.delivery-preview-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.delivery-preview-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.delivery-preview-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .transfer-list {
