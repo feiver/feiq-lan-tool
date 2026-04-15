@@ -29,6 +29,7 @@ vi.mock("../desktop/api", async () => {
     listMessages: vi.fn(),
     listTransfers: vi.fn(),
     syncRuntimeSettings: vi.fn(),
+    sendFileToDevice: vi.fn(),
     sendDirectMessage: vi.fn(),
     sendBroadcastMessage: vi.fn(),
   };
@@ -38,6 +39,7 @@ const mockedListDevices = vi.mocked(desktopApi.listDevices);
 const mockedListMessages = vi.mocked(desktopApi.listMessages);
 const mockedListTransfers = vi.mocked(desktopApi.listTransfers);
 const mockedSyncRuntimeSettings = vi.mocked(desktopApi.syncRuntimeSettings);
+const mockedSendFileToDevice = vi.mocked(desktopApi.sendFileToDevice);
 const mockedSendDirectMessage = vi.mocked(desktopApi.sendDirectMessage);
 const mockedSendBroadcastMessage = vi.mocked(desktopApi.sendBroadcastMessage);
 const mockedListen = vi.mocked(eventApi.listen);
@@ -58,6 +60,7 @@ beforeEach(() => {
   mockedListMessages.mockReset();
   mockedListTransfers.mockReset();
   mockedSyncRuntimeSettings.mockReset();
+  mockedSendFileToDevice.mockReset();
   mockedSendDirectMessage.mockReset();
   mockedSendBroadcastMessage.mockReset();
   mockedListen.mockClear();
@@ -67,6 +70,7 @@ beforeEach(() => {
   mockedListMessages.mockResolvedValue([]);
   mockedListTransfers.mockResolvedValue([]);
   mockedSyncRuntimeSettings.mockResolvedValue();
+  mockedSendFileToDevice.mockResolvedValue();
   mockedSendDirectMessage.mockResolvedValue();
   mockedSendBroadcastMessage.mockResolvedValue();
 });
@@ -317,6 +321,39 @@ test("shows transferred bytes when total file size is unknown", async () => {
   await waitFor(() => {
     expect(screen.getByText("unknown-size.bin")).toBeInTheDocument();
     expect(screen.getByText("40 B")).toBeInTheDocument();
+  });
+});
+
+test("sends file to the active device file port", async () => {
+  const user = userEvent.setup();
+
+  mockedListDevices.mockResolvedValue([
+    {
+      device_id: "device-a",
+      nickname: "Alice",
+      host_name: "alice-pc",
+      ip_addr: "192.168.1.10",
+      message_port: 37001,
+      file_port: 37002,
+      last_seen_ms: 1000,
+    },
+  ]);
+
+  render(<App />);
+
+  await waitFor(() => {
+    expect(screen.getByText("当前会话：Alice")).toBeInTheDocument();
+  });
+
+  await user.type(screen.getByPlaceholderText("输入待发送文件路径"), "C:\\temp\\demo.txt");
+  await user.click(screen.getByRole("button", { name: "发送文件" }));
+
+  await waitFor(() => {
+    expect(mockedSendFileToDevice).toHaveBeenCalledWith(
+      "192.168.1.10:37002",
+      "C:\\temp\\demo.txt",
+      "device-a",
+    );
   });
 });
 

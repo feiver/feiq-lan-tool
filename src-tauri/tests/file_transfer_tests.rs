@@ -9,7 +9,12 @@ use std::task::{Context, Poll, Wake, Waker};
 use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use feiq_lan_tool_lib::file_transfer::{mark_transfer_status, receive_file, send_file};
+use feiq_lan_tool_lib::file_transfer::{
+    mark_transfer_status,
+    receive_file,
+    send_file,
+    send_file_with_progress,
+};
 use feiq_lan_tool_lib::models::{TransferStatus, TransferTask};
 
 struct NoopWake;
@@ -109,6 +114,51 @@ fn receive_file_writes_bytes_and_updates_transfer_snapshots() {
 
     assert_eq!(received, content.len() as u64);
     assert_eq!(written, content);
+    assert_eq!(task.transferred_bytes, content.len() as u64);
+    assert_eq!(task.status, TransferStatus::Completed);
+    assert!(!snapshots.is_empty());
+    assert_eq!(snapshots.last().expect("last snapshot").status, TransferStatus::Completed);
+
+    fs::remove_file(path).expect("cleanup temp file");
+}
+
+#[test]
+fn send_file_with_progress_updates_transfer_snapshots() {
+    let path = temp_file_path();
+    let content = b"send with progress".to_vec();
+    fs::write(&path, &content).expect("write temp file");
+
+    let listener = TcpListener::bind("127.0.0.1:0").expect("bind listener");
+    let addr = listener.local_addr().expect("listener addr");
+    let mut task = TransferTask {
+        transfer_id: "tx-send-1".into(),
+        file_name: "demo.txt".into(),
+        file_size: content.len() as u64,
+        transferred_bytes: 0,
+        from_device_id: "local-device".into(),
+        to_device_id: "device-a".into(),
+        status: TransferStatus::Pending,
+    };
+    let mut snapshots = Vec::new();
+
+    let server = thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("accept connection");
+        let mut bytes = Vec::new();
+        stream.read_to_end(&mut bytes).expect("read bytes");
+        bytes
+    });
+
+    let sent = block_on_ready(send_file_with_progress(
+        &addr.to_string(),
+        &path,
+        &mut task,
+        |snapshot| snapshots.push(snapshot.clone()),
+    ))
+    .expect("send file with progress");
+    let received = server.join().expect("join server thread");
+
+    assert_eq!(sent, content.len() as u64);
+    assert_eq!(received, content);
     assert_eq!(task.transferred_bytes, content.len() as u64);
     assert_eq!(task.status, TransferStatus::Completed);
     assert!(!snapshots.is_empty());

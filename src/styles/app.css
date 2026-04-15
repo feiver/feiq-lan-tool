@@ -146,6 +146,17 @@ body {
   font: inherit;
 }
 
+.chat-file-input {
+  width: 100%;
+  margin-top: 12px;
+  border: 1px solid rgba(100, 135, 190, 0.28);
+  border-radius: 18px;
+  padding: 14px 16px;
+  background: rgba(244, 248, 255, 0.92);
+  color: #14213d;
+  font: inherit;
+}
+
 .chat-log {
   display: grid;
   gap: 10px;

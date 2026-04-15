@@ -5,6 +5,7 @@ import { useAppStore } from "./app/store";
 import {
   sendBroadcastMessage,
   sendDirectMessage,
+  sendFileToDevice,
   syncRuntimeSettings,
 } from "./desktop/api";
 import { ChatPanel } from "./desktop/modules/chat/ChatPanel";
@@ -29,6 +30,7 @@ function App() {
   const activeDevice =
     devices.find((device) => device.device_id === selectedDeviceId) ?? null;
   const [draftMessage, setDraftMessage] = useState("");
+  const [draftFilePath, setDraftFilePath] = useState("");
 
   useEffect(() => {
     void load();
@@ -161,6 +163,24 @@ function App() {
     setDraftMessage("");
   }
 
+  async function handleSendFile() {
+    if (!activeDevice) {
+      return;
+    }
+
+    const filePath = draftFilePath.trim();
+    if (!filePath) {
+      return;
+    }
+
+    await sendFileToDevice(
+      `${activeDevice.ip_addr}:${activeDevice.file_port}`,
+      filePath,
+      activeDevice.device_id,
+    );
+    setDraftFilePath("");
+  }
+
   const visibleMessages = messages.filter((message) => {
     if (message.kind === "broadcast") {
       return true;
@@ -191,11 +211,15 @@ function App() {
         activeDeviceName={activeDevice?.nickname ?? null}
         messages={visibleMessages}
         draftMessage={draftMessage}
+        filePath={draftFilePath}
         onDraftChange={setDraftMessage}
+        onFilePathChange={setDraftFilePath}
         onSendDirect={() => void handleSendDirect()}
         onSendBroadcast={() => void handleSendBroadcast()}
+        onSendFile={() => void handleSendFile()}
         canSendDirect={Boolean(activeDevice && draftMessage.trim())}
         canSendBroadcast={Boolean(devices.length > 0 && draftMessage.trim())}
+        canSendFile={Boolean(activeDevice && draftFilePath.trim())}
       />
       <div className="right-column">
         <TransfersPanel transfers={transfers} />

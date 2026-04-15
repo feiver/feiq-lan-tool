@@ -43,3 +43,11 @@ export function sendBroadcastMessage(
 ): Promise<void> {
   return invoke("send_broadcast_message", { addr, payload });
 }
+
+export function sendFileToDevice(
+  addr: string,
+  filePath: string,
+  toDeviceId: string,
+): Promise<void> {
+  return invoke("send_file_to_device", { addr, filePath, toDeviceId });
+}

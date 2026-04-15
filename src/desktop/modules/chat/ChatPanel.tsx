@@ -4,22 +4,30 @@ type ChatPanelProps = {
   activeDeviceName: string | null;
   messages: ChatMessage[];
   draftMessage: string;
+  filePath: string;
   onDraftChange: (value: string) => void;
+  onFilePathChange: (value: string) => void;
   onSendDirect: () => void;
   onSendBroadcast: () => void;
+  onSendFile: () => void;
   canSendDirect: boolean;
   canSendBroadcast: boolean;
+  canSendFile: boolean;
 };
 
 export function ChatPanel({
   activeDeviceName,
   messages,
   draftMessage,
+  filePath,
   onDraftChange,
+  onFilePathChange,
   onSendDirect,
   onSendBroadcast,
+  onSendFile,
   canSendDirect,
   canSendBroadcast,
+  canSendFile,
 }: ChatPanelProps) {
   return (
     <section className="panel panel-chat">
@@ -56,12 +64,21 @@ export function ChatPanel({
         value={draftMessage}
         onChange={(event) => onDraftChange(event.currentTarget.value)}
       />
+      <input
+        className="chat-file-input"
+        placeholder="输入待发送文件路径"
+        value={filePath}
+        onChange={(event) => onFilePathChange(event.currentTarget.value)}
+      />
       <div className="chat-actions">
         <button type="button" onClick={onSendDirect} disabled={!canSendDirect}>
           发送单聊
         </button>
         <button type="button" onClick={onSendBroadcast} disabled={!canSendBroadcast}>
           发送广播
+        </button>
+        <button type="button" onClick={onSendFile} disabled={!canSendFile}>
+          发送文件
         </button>
       </div>
     </section>

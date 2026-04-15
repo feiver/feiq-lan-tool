@@ -31,6 +31,7 @@ fn main() {
             commands::list_transfers,
             commands::list_messages,
             commands::sync_settings,
+            commands::send_file_to_device,
             commands::send_direct_message,
             commands::send_broadcast_message
         ])
