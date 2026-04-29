@@ -4875,6 +4875,725 @@ test("uses short previews for delivery file and directory messages", async () =>
   expect(within(bobButton).queryByText(/project-folder/)).not.toBeInTheDocument();
 });
 
+test("shows in-app banner for direct messages from a non-active contact", async () => {
+  mockedListDevices.mockResolvedValue([
+    {
+      device_id: "device-a",
+      nickname: "Alice",
+      host_name: "alice-pc",
+      ip_addr: "192.168.1.10",
+      message_port: 37001,
+      file_port: 37002,
+      last_seen_ms: 1000,
+    },
+    {
+      device_id: "device-b",
+      nickname: "Bob",
+      host_name: "bob-mac",
+      ip_addr: "192.168.1.11",
+      message_port: 37003,
+      file_port: 37004,
+      last_seen_ms: 1001,
+    },
+  ]);
+
+  render(<App />);
+
+  await screen.findByText("当前会话：Alice");
+
+  act(() => {
+    eventListeners.get("chat-message-received")?.({
+      payload: {
+        message_id: "banner-direct-1",
+        from_device_id: "device-b",
+        to_device_id: "local-device",
+        content: "Bob 新消息",
+        sent_at_ms: 1100,
+        kind: "direct",
+      },
+    });
+  });
+
+  expect(screen.getByText("Bob 发来新消息")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "查看" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "关闭" })).toBeInTheDocument();
+});
+
+test("does not show in-app banner for direct messages when banner notifications are disabled", async () => {
+  mockedListDevices.mockResolvedValue([
+    {
+      device_id: "device-a",
+      nickname: "Alice",
+      host_name: "alice-pc",
+      ip_addr: "192.168.1.10",
+      message_port: 37001,
+      file_port: 37002,
+      last_seen_ms: 1000,
+    },
+    {
+      device_id: "device-b",
+      nickname: "Bob",
+      host_name: "bob-mac",
+      ip_addr: "192.168.1.11",
+      message_port: 37003,
+      file_port: 37004,
+      last_seen_ms: 1001,
+    },
+  ]);
+  mockedGetRuntimeSettings.mockResolvedValue({
+    preferences: {
+      identity: {
+        nickname: "未命名设备",
+        deviceNameMode: "NicknameOnly",
+        statusMessage: "",
+      },
+      chat: {
+        enterToSend: false,
+        confirmBeforeBroadcast: true,
+        autoSwitchToIncomingDirect: false,
+        autoSwitchToIncomingDelivery: false,
+        showInAppBannerNotifications: false,
+      },
+      transfer: {
+        downloadDir: "~/Downloads",
+        receiveBeforeAccept: true,
+        openFolderAfterReceive: true,
+        preserveDirectoryStructure: true,
+      },
+      network: {
+        discoveryMode: "Auto",
+        manualSegments: [],
+      },
+      display: {
+        trayEnabled: true,
+        closeAction: "MinimizeToTray",
+      },
+    },
+    runtime: {
+      deviceId: "local-device",
+      messagePort: 37001,
+      filePort: 37002,
+    },
+  });
+
+  render(<App />);
+
+  await screen.findByText("当前会话：Alice");
+
+  act(() => {
+    eventListeners.get("chat-message-received")?.({
+      payload: {
+        message_id: "banner-disabled-direct-1",
+        from_device_id: "device-b",
+        to_device_id: "local-device",
+        content: "Bob 新消息",
+        sent_at_ms: 1110,
+        kind: "direct",
+      },
+    });
+  });
+
+  const bobButton = screen.getByRole("button", { name: /Bob/ });
+  expect(screen.queryByText("Bob 发来新消息")).not.toBeInTheDocument();
+  expect(within(bobButton).getByLabelText("未读 1 条")).toBeInTheDocument();
+});
+
+test("does not show in-app banner for the active session", async () => {
+  mockedListDevices.mockResolvedValue([
+    {
+      device_id: "device-a",
+      nickname: "Alice",
+      host_name: "alice-pc",
+      ip_addr: "192.168.1.10",
+      message_port: 37001,
+      file_port: 37002,
+      last_seen_ms: 1000,
+    },
+  ]);
+
+  render(<App />);
+
+  await screen.findByText("当前会话：Alice");
+
+  act(() => {
+    eventListeners.get("chat-message-received")?.({
+      payload: {
+        message_id: "banner-direct-active-1",
+        from_device_id: "device-a",
+        to_device_id: "local-device",
+        content: "Alice 当前会话消息",
+        sent_at_ms: 1101,
+        kind: "direct",
+      },
+    });
+  });
+
+  expect(screen.queryByText("Alice 发来新消息")).not.toBeInTheDocument();
+});
+
+test("does not show in-app banner for broadcast messages", async () => {
+  mockedListDevices.mockResolvedValue([
+    {
+      device_id: "device-a",
+      nickname: "Alice",
+      host_name: "alice-pc",
+      ip_addr: "192.168.1.10",
+      message_port: 37001,
+      file_port: 37002,
+      last_seen_ms: 1000,
+    },
+  ]);
+
+  render(<App />);
+
+  await screen.findByText("当前会话：Alice");
+
+  act(() => {
+    eventListeners.get("chat-message-received")?.({
+      payload: {
+        message_id: "banner-broadcast-1",
+        from_device_id: "device-a",
+        to_device_id: "*",
+        content: "广播消息",
+        sent_at_ms: 1102,
+        kind: "broadcast",
+      },
+    });
+  });
+
+  expect(screen.queryByText("Alice 发来新消息")).not.toBeInTheDocument();
+});
+
+test("shows in-app banner for delivery from a non-active contact", async () => {
+  mockedListDevices.mockResolvedValue([
+    {
+      device_id: "device-a",
+      nickname: "Alice",
+      host_name: "alice-pc",
+      ip_addr: "192.168.1.10",
+      message_port: 37001,
+      file_port: 37002,
+      last_seen_ms: 1000,
+    },
+    {
+      device_id: "device-b",
+      nickname: "Bob",
+      host_name: "bob-mac",
+      ip_addr: "192.168.1.11",
+      message_port: 37003,
+      file_port: 37004,
+      last_seen_ms: 1001,
+    },
+  ]);
+  mockedGetRuntimeSettings.mockResolvedValue({
+    preferences: {
+      identity: {
+        nickname: "未命名设备",
+        deviceNameMode: "NicknameOnly",
+        statusMessage: "",
+      },
+      chat: {
+        enterToSend: false,
+        confirmBeforeBroadcast: true,
+        autoSwitchToIncomingDirect: false,
+        autoSwitchToIncomingDelivery: false,
+      },
+      transfer: {
+        downloadDir: "~/Downloads",
+        receiveBeforeAccept: true,
+        openFolderAfterReceive: true,
+        preserveDirectoryStructure: true,
+      },
+      network: {
+        discoveryMode: "Auto",
+        manualSegments: [],
+      },
+      display: {
+        trayEnabled: true,
+        closeAction: "MinimizeToTray",
+      },
+    },
+    runtime: {
+      deviceId: "local-device",
+      messagePort: 37001,
+      filePort: 37002,
+    },
+  });
+
+  render(<App />);
+
+  await screen.findByText("当前会话：Alice");
+
+  act(() => {
+    eventListeners.get("chat-message-received")?.({
+      payload: {
+        message_id: "banner-delivery-1",
+        from_device_id: "device-b",
+        to_device_id: "local-device",
+        content: "delivery",
+        sent_at_ms: 1103,
+        kind: "delivery",
+        delivery: {
+          request_id: "banner-delivery-1",
+          status: "PendingDecision",
+          save_root: null,
+          entries: [
+            {
+              entry_id: "banner-delivery-entry-1",
+              display_name: "demo.txt",
+              relative_path: "demo.txt",
+              file_size: 12,
+              kind: "File",
+            },
+          ],
+        },
+      },
+    });
+  });
+
+  expect(screen.getByText("Bob 发来文件投递")).toBeInTheDocument();
+});
+
+test("does not show in-app banner for delivery when banner notifications are disabled", async () => {
+  mockedListDevices.mockResolvedValue([
+    {
+      device_id: "device-a",
+      nickname: "Alice",
+      host_name: "alice-pc",
+      ip_addr: "192.168.1.10",
+      message_port: 37001,
+      file_port: 37002,
+      last_seen_ms: 1000,
+    },
+    {
+      device_id: "device-b",
+      nickname: "Bob",
+      host_name: "bob-mac",
+      ip_addr: "192.168.1.11",
+      message_port: 37003,
+      file_port: 37004,
+      last_seen_ms: 1001,
+    },
+  ]);
+  mockedGetRuntimeSettings.mockResolvedValue({
+    preferences: {
+      identity: {
+        nickname: "未命名设备",
+        deviceNameMode: "NicknameOnly",
+        statusMessage: "",
+      },
+      chat: {
+        enterToSend: false,
+        confirmBeforeBroadcast: true,
+        autoSwitchToIncomingDirect: false,
+        autoSwitchToIncomingDelivery: false,
+        showInAppBannerNotifications: false,
+      },
+      transfer: {
+        downloadDir: "~/Downloads",
+        receiveBeforeAccept: true,
+        openFolderAfterReceive: true,
+        preserveDirectoryStructure: true,
+      },
+      network: {
+        discoveryMode: "Auto",
+        manualSegments: [],
+      },
+      display: {
+        trayEnabled: true,
+        closeAction: "MinimizeToTray",
+      },
+    },
+    runtime: {
+      deviceId: "local-device",
+      messagePort: 37001,
+      filePort: 37002,
+    },
+  });
+
+  render(<App />);
+
+  await screen.findByText("当前会话：Alice");
+
+  act(() => {
+    eventListeners.get("chat-message-received")?.({
+      payload: {
+        message_id: "banner-disabled-delivery-1",
+        from_device_id: "device-b",
+        to_device_id: "local-device",
+        content: "delivery",
+        sent_at_ms: 1111,
+        kind: "delivery",
+        delivery: {
+          request_id: "banner-disabled-delivery-1",
+          status: "PendingDecision",
+          save_root: null,
+          entries: [
+            {
+              entry_id: "banner-disabled-delivery-entry-1",
+              display_name: "demo.txt",
+              relative_path: "demo.txt",
+              file_size: 12,
+              kind: "File",
+            },
+          ],
+        },
+      },
+    });
+  });
+
+  const bobButton = screen.getByRole("button", { name: /Bob/ });
+  expect(screen.queryByText("Bob 发来文件投递")).not.toBeInTheDocument();
+  expect(within(bobButton).getByText("待接收")).toBeInTheDocument();
+});
+
+test("keeps in-app banner notifications enabled for old chat settings without the new field", async () => {
+  mockedListDevices.mockResolvedValue([
+    {
+      device_id: "device-a",
+      nickname: "Alice",
+      host_name: "alice-pc",
+      ip_addr: "192.168.1.10",
+      message_port: 37001,
+      file_port: 37002,
+      last_seen_ms: 1000,
+    },
+    {
+      device_id: "device-b",
+      nickname: "Bob",
+      host_name: "bob-mac",
+      ip_addr: "192.168.1.11",
+      message_port: 37003,
+      file_port: 37004,
+      last_seen_ms: 1001,
+    },
+  ]);
+  mockedGetRuntimeSettings.mockResolvedValue({
+    preferences: {
+      identity: {
+        nickname: "未命名设备",
+        deviceNameMode: "NicknameOnly",
+        statusMessage: "",
+      },
+      chat: {
+        enterToSend: false,
+        confirmBeforeBroadcast: true,
+        autoSwitchToIncomingDirect: false,
+        autoSwitchToIncomingDelivery: false,
+      } as never,
+      transfer: {
+        downloadDir: "~/Downloads",
+        receiveBeforeAccept: true,
+        openFolderAfterReceive: true,
+        preserveDirectoryStructure: true,
+      },
+      network: {
+        discoveryMode: "Auto",
+        manualSegments: [],
+      },
+      display: {
+        trayEnabled: true,
+        closeAction: "MinimizeToTray",
+      },
+    },
+    runtime: {
+      deviceId: "local-device",
+      messagePort: 37001,
+      filePort: 37002,
+    },
+  });
+
+  render(<App />);
+
+  await screen.findByText("当前会话：Alice");
+
+  act(() => {
+    eventListeners.get("chat-message-received")?.({
+      payload: {
+        message_id: "banner-old-config-1",
+        from_device_id: "device-b",
+        to_device_id: "local-device",
+        content: "Bob 新消息",
+        sent_at_ms: 1112,
+        kind: "direct",
+      },
+    });
+  });
+
+  expect(screen.getByText("Bob 发来新消息")).toBeInTheDocument();
+});
+
+test("replaces the current banner with the latest one", async () => {
+  mockedListDevices.mockResolvedValue([
+    {
+      device_id: "device-a",
+      nickname: "Alice",
+      host_name: "alice-pc",
+      ip_addr: "192.168.1.10",
+      message_port: 37001,
+      file_port: 37002,
+      last_seen_ms: 1000,
+    },
+    {
+      device_id: "device-b",
+      nickname: "Bob",
+      host_name: "bob-mac",
+      ip_addr: "192.168.1.11",
+      message_port: 37003,
+      file_port: 37004,
+      last_seen_ms: 1001,
+    },
+    {
+      device_id: "device-c",
+      nickname: "Carol",
+      host_name: "carol-book",
+      ip_addr: "192.168.1.12",
+      message_port: 37005,
+      file_port: 37006,
+      last_seen_ms: 1002,
+    },
+  ]);
+  mockedGetRuntimeSettings.mockResolvedValue({
+    preferences: {
+      identity: {
+        nickname: "未命名设备",
+        deviceNameMode: "NicknameOnly",
+        statusMessage: "",
+      },
+      chat: {
+        enterToSend: false,
+        confirmBeforeBroadcast: true,
+        autoSwitchToIncomingDirect: false,
+        autoSwitchToIncomingDelivery: false,
+      },
+      transfer: {
+        downloadDir: "~/Downloads",
+        receiveBeforeAccept: true,
+        openFolderAfterReceive: true,
+        preserveDirectoryStructure: true,
+      },
+      network: {
+        discoveryMode: "Auto",
+        manualSegments: [],
+      },
+      display: {
+        trayEnabled: true,
+        closeAction: "MinimizeToTray",
+      },
+    },
+    runtime: {
+      deviceId: "local-device",
+      messagePort: 37001,
+      filePort: 37002,
+    },
+  });
+
+  render(<App />);
+
+  await screen.findByText("当前会话：Alice");
+
+  act(() => {
+    eventListeners.get("chat-message-received")?.({
+      payload: {
+        message_id: "banner-replace-1",
+        from_device_id: "device-b",
+        to_device_id: "local-device",
+        content: "msg",
+        sent_at_ms: 1104,
+        kind: "direct",
+      },
+    });
+  });
+
+  expect(screen.getByText("Bob 发来新消息")).toBeInTheDocument();
+
+  act(() => {
+    eventListeners.get("chat-message-received")?.({
+      payload: {
+        message_id: "banner-replace-2",
+        from_device_id: "device-c",
+        to_device_id: "local-device",
+        content: "msg",
+        sent_at_ms: 1105,
+        kind: "delivery",
+        delivery: {
+          request_id: "banner-replace-2",
+          status: "PendingDecision",
+          save_root: null,
+          entries: [
+            {
+              entry_id: "banner-replace-entry-2",
+              display_name: "demo.txt",
+              relative_path: "demo.txt",
+              file_size: 12,
+              kind: "File",
+            },
+          ],
+        },
+      },
+    });
+  });
+
+  expect(screen.queryByText("Bob 发来新消息")).not.toBeInTheDocument();
+  expect(screen.getByText("Carol 发来文件投递")).toBeInTheDocument();
+});
+
+test("opens the related session when clicking view on the banner", async () => {
+  const user = userEvent.setup();
+
+  mockedListDevices.mockResolvedValue([
+    {
+      device_id: "device-a",
+      nickname: "Alice",
+      host_name: "alice-pc",
+      ip_addr: "192.168.1.10",
+      message_port: 37001,
+      file_port: 37002,
+      last_seen_ms: 1000,
+    },
+    {
+      device_id: "device-b",
+      nickname: "Bob",
+      host_name: "bob-mac",
+      ip_addr: "192.168.1.11",
+      message_port: 37003,
+      file_port: 37004,
+      last_seen_ms: 1001,
+    },
+  ]);
+
+  render(<App />);
+
+  await screen.findByText("当前会话：Alice");
+
+  act(() => {
+    eventListeners.get("chat-message-received")?.({
+      payload: {
+        message_id: "banner-open-1",
+        from_device_id: "device-b",
+        to_device_id: "local-device",
+        content: "Bob 新消息",
+        sent_at_ms: 1106,
+        kind: "direct",
+      },
+    });
+  });
+
+  await user.click(screen.getByRole("button", { name: "查看" }));
+
+  await waitFor(() => {
+    expect(screen.getByRole("button", { name: /Bob/ }).className).toContain(
+      "is-active",
+    );
+    expect(screen.queryByText("Bob 发来新消息")).not.toBeInTheDocument();
+  });
+});
+
+test("closes the banner without clearing unread state", async () => {
+  const user = userEvent.setup();
+
+  mockedListDevices.mockResolvedValue([
+    {
+      device_id: "device-a",
+      nickname: "Alice",
+      host_name: "alice-pc",
+      ip_addr: "192.168.1.10",
+      message_port: 37001,
+      file_port: 37002,
+      last_seen_ms: 1000,
+    },
+    {
+      device_id: "device-b",
+      nickname: "Bob",
+      host_name: "bob-mac",
+      ip_addr: "192.168.1.11",
+      message_port: 37003,
+      file_port: 37004,
+      last_seen_ms: 1001,
+    },
+  ]);
+
+  render(<App />);
+
+  await screen.findByText("当前会话：Alice");
+
+  act(() => {
+    eventListeners.get("chat-message-received")?.({
+      payload: {
+        message_id: "banner-close-1",
+        from_device_id: "device-b",
+        to_device_id: "local-device",
+        content: "Bob 新消息",
+        sent_at_ms: 1107,
+        kind: "direct",
+      },
+    });
+  });
+
+  await user.click(screen.getByRole("button", { name: "关闭" }));
+
+  const bobButton = screen.getByRole("button", { name: /Bob/ });
+  expect(screen.queryByText("Bob 发来新消息")).not.toBeInTheDocument();
+  expect(within(bobButton).getByLabelText("未读 1 条")).toBeInTheDocument();
+});
+
+test("auto dismisses the banner after six seconds", async () => {
+  vi.useFakeTimers();
+  try {
+    mockedListDevices.mockResolvedValue([
+      {
+        device_id: "device-a",
+        nickname: "Alice",
+        host_name: "alice-pc",
+        ip_addr: "192.168.1.10",
+        message_port: 37001,
+        file_port: 37002,
+        last_seen_ms: 1000,
+      },
+      {
+        device_id: "device-b",
+        nickname: "Bob",
+        host_name: "bob-mac",
+        ip_addr: "192.168.1.11",
+        message_port: 37003,
+        file_port: 37004,
+        last_seen_ms: 1001,
+      },
+    ]);
+
+    await act(async () => {
+      render(<App />);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText("当前会话：Alice")).toBeInTheDocument();
+
+    act(() => {
+      eventListeners.get("chat-message-received")?.({
+        payload: {
+          message_id: "banner-timeout-1",
+          from_device_id: "device-b",
+          to_device_id: "local-device",
+          content: "Bob 新消息",
+          sent_at_ms: 1108,
+          kind: "direct",
+        },
+      });
+    });
+
+    expect(screen.getByText("Bob 发来新消息")).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6000);
+    });
+
+    expect(screen.queryByText("Bob 发来新消息")).not.toBeInTheDocument();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
 test("updates contacts when discovery event arrives", async () => {
   render(<App />);
 
@@ -6838,11 +7557,13 @@ test("shows chat settings and updates shared settings state", async () => {
 
   expect(screen.getByLabelText("Enter 发送消息")).toBeInTheDocument();
   expect(screen.getByLabelText("广播前确认")).toBeInTheDocument();
+  expect(screen.getByLabelText("应用内横幅提醒")).toBeInTheDocument();
   expect(screen.getByLabelText("收到单聊自动切换到来源会话")).toBeInTheDocument();
   expect(screen.getByLabelText("收到文件投递自动切换到来源会话")).toBeInTheDocument();
 
   await user.click(screen.getByLabelText("Enter 发送消息"));
   await user.click(screen.getByLabelText("广播前确认"));
+  await user.click(screen.getByLabelText("应用内横幅提醒"));
   await user.click(screen.getByLabelText("收到单聊自动切换到来源会话"));
   await user.click(screen.getByLabelText("收到文件投递自动切换到来源会话"));
 
@@ -6851,5 +7572,6 @@ test("shows chat settings and updates shared settings state", async () => {
     confirmBeforeBroadcast: false,
     autoSwitchToIncomingDirect: true,
     autoSwitchToIncomingDelivery: false,
+    showInAppBannerNotifications: false,
   });
 });

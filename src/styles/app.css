@@ -32,6 +32,62 @@ body {
   padding: 16px;
 }
 
+.in-app-banner {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 20;
+  width: min(360px, calc(100vw - 32px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.94);
+  color: #f8fafc;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.24);
+}
+
+.in-app-banner__content {
+  min-width: 0;
+  flex: 1;
+}
+
+.in-app-banner__content strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: inherit;
+}
+
+.in-app-banner__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.in-app-banner__actions button {
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.in-app-banner__actions button:first-child {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.in-app-banner__actions button:last-child {
+  background: rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+}
+
 .settings-window-shell {
   min-height: 100vh;
   padding: 16px;
@@ -911,6 +967,19 @@ body {
 @media (max-width: 720px) {
   .app-shell {
     grid-template-columns: 1fr;
+  }
+
+  .in-app-banner {
+    left: 16px;
+    right: 16px;
+    width: auto;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .in-app-banner__actions {
+    width: 100%;
+    justify-content: flex-end;
   }
 
   .panel-chat {

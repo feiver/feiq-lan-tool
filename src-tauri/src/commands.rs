@@ -1,6 +1,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::runtime::refresh_discovery_once;
+use crate::display_runtime::apply_display_preferences;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, State};
 
@@ -8,8 +10,10 @@ use feiq_lan_tool_lib::app_state::{AppState, OutgoingDeliveryFile, OutgoingDeliv
 use feiq_lan_tool_lib::file_transfer::send_file_with_offer_and_progress;
 use feiq_lan_tool_lib::message_server::{send_broadcast, send_lan_event, send_message};
 use feiq_lan_tool_lib::models::{
+    AppPreferences,
     ChatDelivery,
     ChatMessage,
+    DiscoveryRefreshHistoryEntry,
     DeliveryDecision,
     DeliveryEntry,
     DeliveryEntryKind,
@@ -20,11 +24,15 @@ use feiq_lan_tool_lib::models::{
     KnownDevice,
     LanEvent,
     MessagePayload,
-    RuntimeSettings,
+    SettingsSnapshot,
     TransferStatus,
     TransferTask,
 };
-use feiq_lan_tool_lib::settings_store::save_settings;
+use feiq_lan_tool_lib::settings_store::{
+    load_discovery_refresh_history,
+    save_discovery_refresh_history,
+    save_preferences,
+};
 
 const TRANSFER_UPDATED_EVENT: &str = "transfer-updated";
 
@@ -54,18 +62,38 @@ pub async fn list_messages(state: State<'_, AppState>) -> Result<Vec<ChatMessage
 }
 
 #[tauri::command]
-pub async fn get_settings(state: State<'_, AppState>) -> Result<RuntimeSettings, String> {
-    Ok(state.runtime_settings())
+pub async fn get_settings(state: State<'_, AppState>) -> Result<SettingsSnapshot, String> {
+    Ok(state.settings_snapshot())
 }
 
 #[tauri::command]
 pub async fn sync_settings(
+    app: AppHandle,
     state: State<'_, AppState>,
-    settings: RuntimeSettings,
+    settings: AppPreferences,
 ) -> Result<(), String> {
-    save_settings(&settings).map_err(|err| err.to_string())?;
-    state.update_runtime_settings(settings);
+    save_preferences(&settings).map_err(|err| err.to_string())?;
+    state.update_preferences(settings.clone());
+    apply_display_preferences(&app, &settings);
     Ok(())
+}
+
+#[tauri::command]
+pub async fn get_discovery_refresh_history(
+) -> Result<Vec<DiscoveryRefreshHistoryEntry>, String> {
+    load_discovery_refresh_history().map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+pub async fn persist_discovery_refresh_history(
+    entries: Vec<DiscoveryRefreshHistoryEntry>,
+) -> Result<(), String> {
+    save_discovery_refresh_history(&entries).map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+pub async fn refresh_discovery(state: State<'_, AppState>) -> Result<(), String> {
+    refresh_discovery_once(state.inner())
 }
 
 #[tauri::command]

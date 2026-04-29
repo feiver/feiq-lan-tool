@@ -1,0 +1,2 @@
+[target.x86_64-pc-windows-gnu]
+linker = "D:/我的工作空间/feiq-lan-tool/scripts/gcc-linker-wrapper.cmd"

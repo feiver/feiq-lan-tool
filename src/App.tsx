@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
@@ -20,6 +20,7 @@ import {
   syncRuntimeSettings,
 } from "./desktop/api";
 import { ChatPanel } from "./desktop/modules/chat/ChatPanel";
+import { InAppNotificationBanner } from "./desktop/modules/chat/InAppNotificationBanner";
 import {
   createPendingFileEntries,
   createPendingDirectoryEntry,
@@ -47,6 +48,11 @@ type AppProps = {
   view?: "main" | "settings";
 };
 
+type InAppBannerState = {
+  deviceId: string;
+  title: string;
+};
+
 function App({ view = "main" }: AppProps) {
   const devices = useAppStore((state) => state.devices);
   const messages = useAppStore((state) => state.messages);
@@ -66,7 +72,10 @@ function App({ view = "main" }: AppProps) {
   const updatePreferences = useAppStore((state) => state.updatePreferences);
   const activeDevice =
     devices.find((device) => device.device_id === selectedDeviceId) ?? null;
-  const chatPreferences = settings.preferences.chat ?? defaultChatPreferences;
+  const chatPreferences = {
+    ...defaultChatPreferences,
+    ...(settings.preferences.chat ?? {}),
+  };
   const pendingDeliveryIndicators = buildPendingDeliveryIndicators(
     messages,
     settings.runtime.deviceId,
@@ -79,6 +88,7 @@ function App({ view = "main" }: AppProps) {
   });
   const [draftMessage, setDraftMessage] = useState("");
   const [pendingDeliveries, setPendingDeliveries] = useState<PendingDeliveryEntry[]>([]);
+  const [inAppBanner, setInAppBanner] = useState<InAppBannerState | null>(null);
   const [isDeliveryDragActive, setIsDeliveryDragActive] = useState(false);
   const [discoveryRefreshFeedback, setDiscoveryRefreshFeedback] =
     useState<DiscoveryRefreshFeedback>({
@@ -96,6 +106,37 @@ function App({ view = "main" }: AppProps) {
   const openedDeliveryRootsRef = useRef<Set<string>>(new Set());
   const discoveryRefreshBaselineRef = useRef<Set<string> | null>(null);
   const discoveryRefreshTimerRef = useRef<number | null>(null);
+  const bannerTimerRef = useRef<number | null>(null);
+
+  const clearInAppBanner = useCallback(() => {
+    if (bannerTimerRef.current !== null) {
+      window.clearTimeout(bannerTimerRef.current);
+      bannerTimerRef.current = null;
+    }
+
+    setInAppBanner(null);
+  }, []);
+
+  const showInAppBanner = useCallback((nextBanner: InAppBannerState) => {
+    if (bannerTimerRef.current !== null) {
+      window.clearTimeout(bannerTimerRef.current);
+    }
+
+    setInAppBanner(nextBanner);
+    bannerTimerRef.current = window.setTimeout(() => {
+      bannerTimerRef.current = null;
+      setInAppBanner(null);
+    }, 6000);
+  }, []);
+
+  const handleOpenBanner = useCallback(() => {
+    if (!inAppBanner) {
+      return;
+    }
+
+    selectDevice(inAppBanner.deviceId);
+    clearInAppBanner();
+  }, [clearInAppBanner, inAppBanner, selectDevice]);
 
   useEffect(() => {
     void load();
@@ -145,8 +186,10 @@ function App({ view = "main" }: AppProps) {
       addMessage(message);
 
       const currentState = useAppStore.getState();
-      const currentChatPreferences =
-        currentState.settings.preferences.chat ?? defaultChatPreferences;
+      const currentChatPreferences = {
+        ...defaultChatPreferences,
+        ...(currentState.settings.preferences.chat ?? {}),
+      };
       const isIncomingFromKnownDevice =
         message.from_device_id !== currentState.settings.runtime.deviceId &&
         currentState.devices.some(
@@ -172,6 +215,28 @@ function App({ view = "main" }: AppProps) {
       if (shouldIncrementUnread) {
         incrementContactUnread(message.from_device_id);
       }
+
+      const shouldShowBanner =
+        currentChatPreferences.showInAppBannerNotifications &&
+        isIncomingFromKnownDevice &&
+        currentState.selectedDeviceId !== message.from_device_id &&
+        (message.kind === "direct" || message.kind === "delivery");
+
+      if (shouldShowBanner) {
+        const sourceDevice = currentState.devices.find(
+          (device) => device.device_id === message.from_device_id,
+        );
+
+        if (sourceDevice) {
+          showInAppBanner({
+            deviceId: sourceDevice.device_id,
+            title:
+              message.kind === "delivery"
+                ? `${sourceDevice.nickname} 发来文件投递`
+                : `${sourceDevice.nickname} 发来新消息`,
+          });
+        }
+      }
     }).then((cleanup) => {
       if (disposed) {
         cleanup();
@@ -185,7 +250,7 @@ function App({ view = "main" }: AppProps) {
       disposed = true;
       unlisten?.();
     };
-  }, [addMessage, incrementContactUnread, selectDevice, view]);
+  }, [addMessage, incrementContactUnread, selectDevice, showInAppBanner, view]);
 
   useEffect(() => {
     let unlisten: (() => void) | null = null;
@@ -224,6 +289,9 @@ function App({ view = "main" }: AppProps) {
     () => () => {
       if (discoveryRefreshTimerRef.current !== null) {
         window.clearTimeout(discoveryRefreshTimerRef.current);
+      }
+      if (bannerTimerRef.current !== null) {
+        window.clearTimeout(bannerTimerRef.current);
       }
     },
     [],
@@ -669,6 +737,13 @@ function App({ view = "main" }: AppProps) {
 
   return (
     <main className="app-shell">
+      {inAppBanner ? (
+        <InAppNotificationBanner
+          title={inAppBanner.title}
+          onOpen={handleOpenBanner}
+          onDismiss={clearInAppBanner}
+        />
+      ) : null}
       <div className="left-column">
         <ContactsPanel
           devices={devices}

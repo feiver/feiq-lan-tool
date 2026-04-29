@@ -15,7 +15,7 @@ pub fn record_incoming_message(state: &AppState, event: LanEvent) -> Option<Chat
             state.upsert_message(message.clone());
             Some(message)
         }
-        LanEvent::DeviceAnnouncement(_) => None,
+        LanEvent::DeviceAnnouncement(_) | LanEvent::DiscoveryProbe(_) => None,
         LanEvent::DeliveryRequest(request) => {
             let message = ChatMessage {
                 message_id: request.request_id.clone(),

@@ -1,3 +1,4 @@
+import type { KeyboardEvent } from "react";
 import type { ChatMessage } from "../../types";
 import { FileDeliveryCard } from "./FileDeliveryCard";
 import {
@@ -12,6 +13,7 @@ type ChatPanelProps = {
   draftMessage: string;
   pendingDeliveries: PendingDeliveryEntry[];
   isDeliveryDragActive: boolean;
+  enableEnterToSend: boolean;
   onDraftChange: (value: string) => void;
   onPickFiles: () => void;
   onPickDirectory: () => void;
@@ -33,6 +35,7 @@ export function ChatPanel({
   draftMessage,
   pendingDeliveries,
   isDeliveryDragActive,
+  enableEnterToSend,
   onDraftChange,
   onPickFiles,
   onPickDirectory,
@@ -68,6 +71,15 @@ export function ChatPanel({
           ? "投递"
           : "单聊";
     return `${senderName} · ${kindLabel}`;
+  }
+
+  function handleDraftKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (!enableEnterToSend || event.key !== "Enter" || event.shiftKey) {
+      return;
+    }
+
+    event.preventDefault();
+    onSendDirect();
   }
 
   return (
@@ -119,6 +131,7 @@ export function ChatPanel({
         rows={5}
         value={draftMessage}
         onChange={(event) => onDraftChange(event.currentTarget.value)}
+        onKeyDown={handleDraftKeyDown}
       />
       <div className="chat-actions">
         <button type="button" onClick={onSendDirect} disabled={!canSendDirect}>

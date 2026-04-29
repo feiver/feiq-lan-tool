@@ -1,27 +1,29 @@
 {
   "version": 1,
   "project": "feiq-lan-tool",
-  "last_updated": "2026-04-24T10:26:00+08:00",
+  "last_updated": "2026-04-29T09:27:09+08:00",
   "brief": {
-    "goal": "为联系人列表新增单行智能摘要，按待接收文件、传输中、未读、最近消息的优先级帮助用户快速定位下一步动作。",
+    "goal": "为应用内横幅提醒新增聊天与通知设置开关，默认开启，关闭后只抑制横幅，不影响消息、未读和待接收状态。",
     "constraints": [
       "遵循现有 React + Zustand + Tauri 架构，不新增后端协议。",
-      "联系人面板只负责展示摘要，摘要规则由主流程从现有状态推导。",
-      "保持现有未读角标、待接收标签、点击联系人清除未读和待接收不因点击消失的行为。",
+      "只新增应用内横幅提醒总开关，不新增声音、免打扰、停留时间或按联系人策略。",
+      "默认开启并兼容旧配置缺字段场景。",
+      "关闭开关只影响横幅提醒，不影响消息记录、未读角标、待接收标签和文件投递卡片。",
+      "保持自动切换设置优先于横幅提醒的现有语义。",
       "实现前必须完成 design spec 用户确认，并写入 implementation plan。"
     ],
     "acceptance": [
-      "联系人存在入站待接收投递时显示待接收文件摘要。",
-      "联系人存在进行中的相关传输且没有更高优先级状态时显示传输中摘要。",
-      "联系人存在未读且没有更高优先级状态时显示有未读消息摘要。",
-      "联系人没有强状态时显示最近一条消息预览，并区分你/对方方向。",
+      "聊天与通知设置页展示应用内横幅提醒开关。",
+      "默认配置和旧配置都保持横幅提醒开启。",
+      "关闭开关后非当前会话的单聊消息和文件投递不显示横幅。",
+      "关闭开关不影响未读角标、待接收标签、消息记录和文件投递卡片。",
       "相关 app-shell 测试、前端回归测试和 cargo check 通过后才能关闭实现任务。"
     ]
   },
   "controller": {
     "mode": "codex-pm",
     "current_focus": null,
-    "next_action": "联系人单行智能摘要已实现并完成验证；等待用户选择集成方式或继续下一项需求。"
+    "next_action": "T-009 已完成并通过 focused app-shell、全量前端测试和 cargo check；等待用户选择下一项聊天与通知需求。"
   },
   "tasks": [
     {
@@ -147,6 +149,257 @@
         "rg -n \"联系人单行智能摘要\" README.md -> 2 matches"
       ],
       "last_update": "2026-04-24T10:26:00+08:00"
+    },
+    {
+      "id": "T-004",
+      "title": "完成应用内横幅提醒设计规格",
+      "status": "completed",
+      "priority": "P1",
+      "depends_on": [],
+      "scope_read": [
+        "src/App.tsx",
+        "src/desktop/modules/settings/SettingsPanel.tsx",
+        "src/desktop/types.ts",
+        "README.md"
+      ],
+      "scope_write": [
+        "docs/superpowers/specs/2026-04-27-chat-in-app-banner-notifications-design.md"
+      ],
+      "acceptance": [
+        "明确提醒范围、触发规则、横幅行为和动作。",
+        "明确兼容边界和验收标准。",
+        "明确测试覆盖范围。"
+      ],
+      "verification": [
+        "rg -n \"TBD|TODO|待定|占位|\\?\\?\" docs/superpowers/specs/2026-04-27-chat-in-app-banner-notifications-design.md"
+      ],
+      "assignee": "controller",
+      "agent_id": null,
+      "attempts": 0,
+      "artifact": "docs/superpowers/specs/2026-04-27-chat-in-app-banner-notifications-design.md",
+      "result": "DONE",
+      "verification_result": "pass",
+      "verification_summary": "已完成横幅提醒 spec 自检，未发现占位符或明显歧义。",
+      "verification_evidence": [
+        "rg spec placeholder scan no output"
+      ],
+      "last_update": "2026-04-27T10:10:00+08:00"
+    },
+    {
+      "id": "T-005",
+      "title": "生成应用内横幅提醒实现计划",
+      "status": "completed",
+      "priority": "P1",
+      "depends_on": [
+        "T-004"
+      ],
+      "scope_read": [
+        "docs/superpowers/specs/2026-04-27-chat-in-app-banner-notifications-design.md",
+        "src/App.tsx",
+        "src/styles/app.css",
+        "src/test/app-shell.test.tsx",
+        "README.md"
+      ],
+      "scope_write": [
+        "docs/superpowers/plans/2026-04-27-chat-in-app-banner-notifications.md"
+      ],
+      "acceptance": [
+        "计划按 TDD 顺序列出测试、实现、样式、文档和验证步骤。",
+        "计划明确新增横幅组件与 App 状态边界。"
+      ],
+      "verification": [
+        "人工检查计划覆盖 spec 验收标准"
+      ],
+      "assignee": null,
+      "agent_id": null,
+      "attempts": 0,
+      "artifact": "docs/superpowers/plans/2026-04-27-chat-in-app-banner-notifications.md",
+      "result": "DONE",
+      "verification_result": "pass",
+      "verification_summary": "实现计划已覆盖横幅提醒 spec 的验收标准，并通过占位符扫描。",
+      "verification_evidence": [
+        "rg plan placeholder scan no output"
+      ],
+      "last_update": "2026-04-27T10:20:00+08:00"
+    },
+    {
+      "id": "T-006",
+      "title": "实现应用内横幅提醒并验证",
+      "status": "completed",
+      "priority": "P1",
+      "depends_on": [
+        "T-005"
+      ],
+      "scope_read": [
+        "docs/superpowers/specs/2026-04-27-chat-in-app-banner-notifications-design.md",
+        "docs/superpowers/plans/2026-04-27-chat-in-app-banner-notifications.md",
+        "src/App.tsx",
+        "src/styles/app.css",
+        "src/test/app-shell.test.tsx",
+        "README.md"
+      ],
+      "scope_write": [
+        "src/App.tsx",
+        "src/desktop/modules/chat/InAppNotificationBanner.tsx",
+        "src/styles/app.css",
+        "src/test/app-shell.test.tsx",
+        "README.md"
+      ],
+      "acceptance": [
+        "非当前会话的单聊消息和文件投递会弹出横幅。",
+        "当前会话与广播消息不会弹横幅。",
+        "横幅支持查看、关闭、最新覆盖旧横幅和 6 秒自动消失。",
+        "README 同步记录应用内横幅提醒能力。"
+      ],
+      "verification": [
+        "npm.cmd run test -- app-shell",
+        "npm.cmd run test",
+        "cargo check"
+      ],
+      "assignee": null,
+      "agent_id": null,
+      "attempts": 0,
+      "artifact": "src/App.tsx; src/desktop/modules/chat/InAppNotificationBanner.tsx; src/styles/app.css; src/test/app-shell.test.tsx; README.md",
+      "result": "DONE",
+      "verification_result": "pass",
+      "verification_summary": "应用内横幅提醒已实现，focused app-shell、全量前端测试和 cargo check 均通过。",
+      "verification_evidence": [
+        "npm.cmd run test -- app-shell -> 108 passed",
+        "rg -n \"应用内横幅提醒\" README.md -> 2 matches",
+        "npm.cmd run test -> 115 passed",
+        "cargo check -> Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.46s"
+      ],
+      "last_update": "2026-04-28T15:54:08+08:00"
+    },
+    {
+      "id": "T-007",
+      "title": "完成应用内横幅提醒设置开关设计规格",
+      "status": "completed",
+      "priority": "P1",
+      "depends_on": [
+        "T-006"
+      ],
+      "scope_read": [
+        "docs/superpowers/specs/2026-04-27-chat-in-app-banner-notifications-design.md",
+        "src/App.tsx",
+        "src/desktop/modules/settings/SettingsPanel.tsx",
+        "src/desktop/types.ts",
+        "src/test/app-shell.test.tsx",
+        "README.md"
+      ],
+      "scope_write": [
+        "docs/superpowers/specs/2026-04-28-chat-in-app-banner-settings-design.md"
+      ],
+      "acceptance": [
+        "明确开关默认值、旧配置兼容和设置页入口。",
+        "明确关闭开关后的横幅抑制范围。",
+        "明确不影响未读、待接收、消息记录和自动切换语义。",
+        "明确测试覆盖范围。"
+      ],
+      "verification": [
+        "rg -n \"TBD|TODO|待定|占位|\\?\\?\" docs/superpowers/specs/2026-04-28-chat-in-app-banner-settings-design.md"
+      ],
+      "assignee": "controller",
+      "agent_id": null,
+      "attempts": 0,
+      "artifact": "docs/superpowers/specs/2026-04-28-chat-in-app-banner-settings-design.md",
+      "result": "DONE",
+      "verification_result": "pass",
+      "verification_summary": "已完成应用内横幅提醒设置开关 spec 自检，未发现占位符或明显歧义。",
+      "verification_evidence": [
+        "rg spec placeholder scan no output"
+      ],
+      "last_update": "2026-04-28T16:02:15+08:00"
+    },
+    {
+      "id": "T-008",
+      "title": "生成应用内横幅提醒设置开关实现计划",
+      "status": "completed",
+      "priority": "P1",
+      "depends_on": [
+        "T-007"
+      ],
+      "scope_read": [
+        "docs/superpowers/specs/2026-04-28-chat-in-app-banner-settings-design.md",
+        "src/App.tsx",
+        "src/desktop/modules/settings/SettingsPanel.tsx",
+        "src/desktop/types.ts",
+        "src/test/app-shell.test.tsx",
+        "README.md"
+      ],
+      "scope_write": [
+        "docs/superpowers/plans/2026-04-28-chat-in-app-banner-settings.md"
+      ],
+      "acceptance": [
+        "计划按 TDD 顺序列出类型、设置页、横幅触发逻辑、文档和验证步骤。",
+        "计划明确旧配置兼容处理方式和测试断言。"
+      ],
+      "verification": [
+        "人工检查计划覆盖 spec 验收标准"
+      ],
+      "assignee": null,
+      "agent_id": null,
+      "attempts": 0,
+      "artifact": "docs/superpowers/plans/2026-04-28-chat-in-app-banner-settings.md",
+      "result": "DONE",
+      "verification_result": "pass",
+      "verification_summary": "实现计划已覆盖应用内横幅提醒设置开关 spec 的验收标准，并通过占位符扫描。",
+      "verification_evidence": [
+        "rg -n \"TBD|TODO|待定|占位\" plan -> no output",
+        "rg vague-step and encoding replacement scan -> no output"
+      ],
+      "last_update": "2026-04-28T18:26:42+08:00"
+    },
+    {
+      "id": "T-009",
+      "title": "实现应用内横幅提醒设置开关并验证",
+      "status": "completed",
+      "priority": "P1",
+      "depends_on": [
+        "T-008"
+      ],
+      "scope_read": [
+        "docs/superpowers/specs/2026-04-28-chat-in-app-banner-settings-design.md",
+        "docs/superpowers/plans/2026-04-28-chat-in-app-banner-settings.md",
+        "src/App.tsx",
+        "src/desktop/modules/settings/SettingsPanel.tsx",
+        "src/desktop/types.ts",
+        "src/test/app-shell.test.tsx",
+        "README.md"
+      ],
+      "scope_write": [
+        "src/App.tsx",
+        "src/desktop/modules/settings/SettingsPanel.tsx",
+        "src/desktop/types.ts",
+        "src/test/app-shell.test.tsx",
+        "README.md"
+      ],
+      "acceptance": [
+        "聊天与通知设置页展示应用内横幅提醒开关。",
+        "默认配置和旧配置都保持横幅提醒开启。",
+        "关闭开关后非当前会话的单聊消息和文件投递不显示横幅。",
+        "关闭开关不影响未读角标、待接收标签、消息记录和文件投递卡片。",
+        "README 同步记录应用内横幅提醒设置能力。"
+      ],
+      "verification": [
+        "npm.cmd run test -- app-shell",
+        "npm.cmd run test",
+        "cargo check"
+      ],
+      "assignee": null,
+      "agent_id": null,
+      "attempts": 0,
+      "artifact": "src/App.tsx; src/desktop/modules/settings/SettingsPanel.tsx; src/desktop/types.ts; src/test/app-shell.test.tsx; README.md",
+      "result": "DONE",
+      "verification_result": "pass",
+      "verification_summary": "应用内横幅提醒设置开关已实现，focused app-shell、全量前端测试和 cargo check 均通过。",
+      "verification_evidence": [
+        "npm.cmd run test -- app-shell -> 111 passed",
+        "rg -n \"应用内横幅提醒|应用内横幅提醒开关\" README.md -> 3 matches",
+        "npm.cmd run test -> 118 passed",
+        "cargo check -> Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.15s"
+      ],
+      "last_update": "2026-04-29T09:27:09+08:00"
     }
   ]
 }

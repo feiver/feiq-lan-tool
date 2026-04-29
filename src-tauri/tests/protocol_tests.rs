@@ -1,4 +1,5 @@
 use feiq_lan_tool_lib::models::{
+    DiscoveryProbe,
     DeliveryDecision,
     DeliveryEntry,
     DeliveryEntryKind,
@@ -19,6 +20,7 @@ fn protocol_roundtrip_for_device_announcement() {
         ip_addr: "192.168.1.10".into(),
         message_port: 37001,
         file_port: 37002,
+        status_message: None,
     });
 
     let bytes = encode_event(&event).expect("encode");
@@ -89,6 +91,18 @@ fn protocol_roundtrip_for_delivery_response() {
         to_device_id: "device-a".into(),
         decision: DeliveryDecision::Accepted,
         save_root: Some("D:/接收区".into()),
+    });
+
+    let bytes = encode_event(&event).expect("encode");
+    let decoded = decode_event(&bytes).expect("decode");
+
+    assert_eq!(decoded, event);
+}
+
+#[test]
+fn protocol_roundtrip_for_discovery_probe() {
+    let event = LanEvent::DiscoveryProbe(DiscoveryProbe {
+        from_device_id: "device-a".into(),
     });
 
     let bytes = encode_event(&event).expect("encode");

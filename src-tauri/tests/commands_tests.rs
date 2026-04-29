@@ -1,9 +1,13 @@
 use feiq_lan_tool_lib::app_state::AppState;
 use feiq_lan_tool_lib::models::{
+    AppPreferences,
     ChatDelivery,
     ChatMessage,
+    CloseAction,
+    DeviceNameMode,
     DeliveryStatus,
     DeviceAnnouncement,
+    IdentityPreferences,
     TransferStatus,
     TransferTask,
 };
@@ -28,6 +32,7 @@ fn state_helpers_return_devices_and_transfers() {
             ip_addr: "192.168.1.10".into(),
             message_port: 37001,
             file_port: 37002,
+            status_message: None,
         },
         1000,
     );
@@ -90,4 +95,43 @@ fn app_state_can_update_delivery_message_status() {
     let delivery = messages[0].delivery.as_ref().expect("delivery");
     assert_eq!(delivery.status, DeliveryStatus::Accepted);
     assert_eq!(delivery.save_root.as_deref(), Some("D:/接收区"));
+}
+
+#[test]
+fn state_exposes_snapshot_with_runtime_values() {
+    let state = AppState::default();
+    let snapshot = state.settings_snapshot();
+
+    assert_eq!(snapshot.runtime.message_port, 37001);
+    assert_eq!(snapshot.runtime.file_port, 37002);
+    assert_eq!(snapshot.preferences.identity.nickname, snapshot.runtime.device_id);
+}
+
+#[test]
+fn sync_settings_updates_structured_preferences() {
+    let state = AppState::default();
+    let next = AppPreferences {
+        identity: IdentityPreferences {
+            nickname: "局域网助手".into(),
+            device_name_mode: DeviceNameMode::NicknameWithDeviceName,
+            status_message: "忙碌".into(),
+        },
+        ..AppPreferences::default()
+    };
+
+    state.update_preferences(next.clone());
+
+    assert_eq!(state.settings_snapshot().preferences, next);
+}
+
+#[test]
+fn state_snapshot_contains_display_preferences() {
+    let state = AppState::default();
+    let snapshot = state.settings_snapshot();
+
+    assert!(snapshot.preferences.display.tray_enabled);
+    assert_eq!(
+        snapshot.preferences.display.close_action,
+        CloseAction::MinimizeToTray
+    );
 }

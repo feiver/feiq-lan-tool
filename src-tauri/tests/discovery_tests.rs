@@ -12,6 +12,7 @@ fn marks_device_online_after_announcement() {
         ip_addr: "192.168.1.10".into(),
         message_port: 37001,
         file_port: 37002,
+        status_message: None,
     };
 
     registry.upsert(device.clone(), 1000);
@@ -32,6 +33,7 @@ fn marks_device_offline_after_timeout() {
             ip_addr: "192.168.1.10".into(),
             message_port: 37001,
             file_port: 37002,
+            status_message: None,
         },
         1000,
     );
@@ -53,6 +55,7 @@ fn app_state_tracks_devices_from_runtime_announcements() {
             ip_addr: "192.168.1.20".into(),
             message_port: 37001,
             file_port: 37002,
+            status_message: None,
         },
         2000,
     );

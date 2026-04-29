@@ -1,37 +1,68 @@
 import { create } from "zustand";
 
 import { getRuntimeSettings, listDevices, listMessages, listTransfers } from "../desktop/api";
-import type { ChatMessage, KnownDevice, TransferTask } from "../desktop/types";
-
-type LocalSettings = {
-  deviceId: string;
-  nickname: string;
-  downloadDir: string;
-};
+import type {
+  AppPreferences,
+  ChatMessage,
+  KnownDevice,
+  SettingsSnapshot,
+  TransferTask,
+} from "../desktop/types";
+import { defaultChatPreferences } from "../desktop/types";
 
 type AppStore = {
   devices: KnownDevice[];
   messages: ChatMessage[];
+  contactUnreadCounts: Record<string, number>;
   selectedDeviceId: string | null;
-  settings: LocalSettings;
+  settings: SettingsSnapshot;
   settingsReady: boolean;
   transfers: TransferTask[];
   load: () => Promise<void>;
   setDevices: (devices: KnownDevice[]) => void;
   upsertTransfer: (task: TransferTask) => void;
   selectDevice: (deviceId: string) => void;
+  incrementContactUnread: (deviceId: string) => void;
+  clearContactUnread: (deviceId: string) => void;
   addMessage: (message: ChatMessage) => void;
-  updateSettings: (patch: Partial<LocalSettings>) => void;
+  updatePreferences: (updater: (current: AppPreferences) => AppPreferences) => void;
+};
+
+const defaultPreferences: AppPreferences = {
+  identity: {
+    nickname: "未命名设备",
+    deviceNameMode: "NicknameOnly",
+    statusMessage: "",
+  },
+  chat: defaultChatPreferences,
+  transfer: {
+    downloadDir: "~/Downloads",
+    receiveBeforeAccept: true,
+    openFolderAfterReceive: true,
+    preserveDirectoryStructure: true,
+  },
+  network: {
+    discoveryMode: "Auto",
+    manualSegments: [],
+  },
+  display: {
+    trayEnabled: true,
+    closeAction: "MinimizeToTray",
+  },
 };
 
 export const useAppStore = create<AppStore>((set) => ({
   devices: [],
   messages: [],
+  contactUnreadCounts: {},
   selectedDeviceId: null,
   settings: {
-    deviceId: "local-device",
-    nickname: "未命名设备",
-    downloadDir: "~/Downloads",
+    preferences: defaultPreferences,
+    runtime: {
+      deviceId: "local-device",
+      messagePort: 37001,
+      filePort: 37002,
+    },
   },
   settingsReady: false,
   transfers: [],
@@ -55,6 +86,10 @@ export const useAppStore = create<AppStore>((set) => ({
   setDevices(devices) {
     set((state) => ({
       devices,
+      contactUnreadCounts: filterContactUnreadCounts(
+        state.contactUnreadCounts,
+        devices,
+      ),
       selectedDeviceId: resolveSelectedDeviceId(state.selectedDeviceId, devices),
     }));
   },
@@ -64,18 +99,34 @@ export const useAppStore = create<AppStore>((set) => ({
     }));
   },
   selectDevice(deviceId) {
-    set({ selectedDeviceId: deviceId });
+    set((state) => ({
+      selectedDeviceId: deviceId,
+      contactUnreadCounts: clearUnreadCount(state.contactUnreadCounts, deviceId),
+    }));
+  },
+  incrementContactUnread(deviceId) {
+    set((state) => ({
+      contactUnreadCounts: {
+        ...state.contactUnreadCounts,
+        [deviceId]: (state.contactUnreadCounts[deviceId] ?? 0) + 1,
+      },
+    }));
+  },
+  clearContactUnread(deviceId) {
+    set((state) => ({
+      contactUnreadCounts: clearUnreadCount(state.contactUnreadCounts, deviceId),
+    }));
   },
   addMessage(message) {
     set((state) => ({
       messages: upsertMessage(state.messages, message),
     }));
   },
-  updateSettings(patch) {
+  updatePreferences(updater) {
     set((state) => ({
       settings: {
         ...state.settings,
-        ...patch,
+        preferences: updater(state.settings.preferences),
       },
     }));
   },
@@ -110,4 +161,30 @@ function upsertMessage(messages: ChatMessage[], message: ChatMessage): ChatMessa
   const next = [...messages];
   next[index] = message;
   return next;
+}
+
+function clearUnreadCount(
+  contactUnreadCounts: Record<string, number>,
+  deviceId: string,
+): Record<string, number> {
+  if (!contactUnreadCounts[deviceId]) {
+    return contactUnreadCounts;
+  }
+
+  const next = { ...contactUnreadCounts };
+  delete next[deviceId];
+  return next;
+}
+
+function filterContactUnreadCounts(
+  contactUnreadCounts: Record<string, number>,
+  devices: KnownDevice[],
+): Record<string, number> {
+  const onlineDeviceIds = new Set(devices.map((device) => device.device_id));
+
+  return Object.fromEntries(
+    Object.entries(contactUnreadCounts).filter(([deviceId]) =>
+      onlineDeviceIds.has(deviceId),
+    ),
+  );
 }

@@ -6,6 +6,89 @@ export type KnownDevice = {
   message_port: number;
   file_port: number;
   last_seen_ms: number;
+  status_message?: string | null;
+};
+
+export type DeviceNameMode = "NicknameOnly" | "NicknameWithDeviceName";
+
+export type DiscoveryMode = "Auto" | "ManualSegments" | "CurrentSegmentOnly";
+
+export type CloseAction = "MinimizeToTray" | "Exit";
+
+export type ChatPreferences = {
+  enterToSend: boolean;
+  confirmBeforeBroadcast: boolean;
+  autoSwitchToIncomingDirect: boolean;
+  autoSwitchToIncomingDelivery: boolean;
+  showInAppBannerNotifications: boolean;
+};
+
+export const defaultChatPreferences: ChatPreferences = {
+  enterToSend: false,
+  confirmBeforeBroadcast: true,
+  autoSwitchToIncomingDirect: false,
+  autoSwitchToIncomingDelivery: true,
+  showInAppBannerNotifications: true,
+};
+
+export type AppPreferences = {
+  identity: {
+    nickname: string;
+    deviceNameMode: DeviceNameMode;
+    statusMessage: string;
+  };
+  chat?: ChatPreferences;
+  transfer: {
+    downloadDir: string;
+    receiveBeforeAccept: boolean;
+    openFolderAfterReceive: boolean;
+    preserveDirectoryStructure: boolean;
+  };
+  network: {
+    discoveryMode: DiscoveryMode;
+    manualSegments: string[];
+  };
+  display: {
+    trayEnabled: boolean;
+    closeAction: CloseAction;
+  };
+};
+
+export type SettingsSnapshot = {
+  preferences: AppPreferences;
+  runtime: {
+    deviceId: string;
+    messagePort: number;
+    filePort: number;
+  };
+};
+
+export type DiscoveryRefreshHistoryStatus = "Succeeded" | "Failed";
+
+export type DiscoveryRefreshSegmentStatus =
+  | "NewlyMatched"
+  | "AlreadyOnline"
+  | "Unmatched";
+
+export type DiscoveryRefreshSegmentStatusSummary = {
+  segment: string;
+  status: DiscoveryRefreshSegmentStatus;
+  newDeviceCount: number;
+  existingDeviceCount: number;
+};
+
+export type DiscoveryRefreshHistoryEntry = {
+  id: string;
+  timestamp: number;
+  status: DiscoveryRefreshHistoryStatus;
+  discoveredCount: number;
+  existingCount: number;
+  unmatchedSegmentCount: number;
+  message: string;
+  newDeviceLabels: string[];
+  existingDeviceLabels: string[];
+  unmatchedSegments: string[];
+  segmentStatuses: DiscoveryRefreshSegmentStatusSummary[];
 };
 
 export type TransferTask = {

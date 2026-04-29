@@ -22,6 +22,7 @@ impl DeviceRegistry {
                 message_port: device.message_port,
                 file_port: device.file_port,
                 last_seen_ms: now_ms,
+                status_message: device.status_message,
             },
         );
     }

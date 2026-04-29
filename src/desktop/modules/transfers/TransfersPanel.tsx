@@ -12,6 +12,9 @@ export function TransfersPanel({
   transfers,
 }: TransfersPanelProps) {
   const deviceNames = new Map(devices.map((device) => [device.device_id, device.nickname]));
+  const incomingTransfers = transfers.filter(
+    (task) => task.to_device_id === localDeviceId,
+  );
 
   function formatBytes(value: number): string {
     return `${value} B`;
@@ -43,12 +46,7 @@ export function TransfersPanel({
     }
   }
 
-  function formatDirection(task: TransferTask): string {
-    if (task.from_device_id === localDeviceId) {
-      const targetName = deviceNames.get(task.to_device_id) ?? task.to_device_id;
-      return `发送至 ${targetName}`;
-    }
-
+  function formatSource(task: TransferTask): string {
     const sourceName = deviceNames.get(task.from_device_id) ?? task.from_device_id;
     return `来自 ${sourceName}`;
   }
@@ -56,23 +54,23 @@ export function TransfersPanel({
   return (
     <section className="panel panel-transfers">
       <div className="panel-header">
-        <p className="panel-kicker">Transfers</p>
-        <h2>传输任务</h2>
+        <p className="panel-kicker">Incoming transfers</p>
+        <h2>接收进度</h2>
       </div>
       <ul className="transfer-list">
-        {transfers.length > 0 ? (
-          transfers.map((task) => (
+        {incomingTransfers.length > 0 ? (
+          incomingTransfers.map((task) => (
             <li key={task.transfer_id}>
               <strong>{task.file_name}</strong>
-              <span>{formatDirection(task)}</span>
+              <span>{formatSource(task)}</span>
               <span>{formatProgress(task)}</span>
               <span>{formatStatus(task.status)}</span>
             </li>
           ))
         ) : (
           <li>
-            <strong>暂无传输任务</strong>
-            <span>新的收发进度会显示在这里</span>
+            <strong>等待新的接收任务</strong>
+            <span>收到并开始传输后，进度会显示在这里</span>
           </li>
         )}
       </ul>
